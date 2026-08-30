@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TEZBOZOR — E'lonlar taxtasi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ---- TEZBOZOR design tokens: Registan-tile palette (lapis / majolica teal / marigold),
+       an "adobe plaster" background rather than the generic AI cream+terracotta pairing ---- */
+    --ink:        #211f1a;
+    --lapis:      #17324a;   /* deep indigo — night bazaar, headers */
+    --lapis-2:    #0f2536;
+    --teal:       #17827a;   /* majolica teal — brand / primary actions */
+    --teal-dark:  #115f59;
+    --marigold:   #e2a63b;   /* saffron — price tags, highlights */
+    --marigold-dk:#b8811e;
+    --brick:      #b8543a;   /* muted brick — used sparingly: destructive actions only */
+    --plaster:    #f1ead9;   /* warm adobe wall, base background */
+    --plaster-2:  #e7dcc4;
+    --card:       #fffdf8;
+    --line:       #e2d6ba;
+    --muted:      #7a7060;
+    --shadow:     0 10px 30px rgba(23,50,74,0.14);
+    --shadow-sm:  0 2px 8px rgba(23,50,74,0.10);
+    --radius:     14px;
+    --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+    --font-body:    'Manrope', 'Segoe UI', Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; overflow-x: hidden; }
+  body { font-family: var(--font-body); background: var(--plaster); color: var(--ink); min-height: 100vh; font-size: 15px; }
+  img { max-width: 100%; display: block; }
+  button, input, textarea { font-family: inherit; }
+  button { cursor: pointer; }
+  h1, h2, .brand-mini, .logo, #open-label, #brand-title { font-family: var(--font-display); }
+
+  button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  /* ===================== GATE / DOOR SCREEN =====================
+     Signature element: an iwan-style arch with two ornamental "curtain"
+     panels (lattice pattern, like majolica tilework) that part on click,
+     revealing a warm marigold glow behind — a bazaar gateway, not a
+     literal door swinging on a hinge. Built entirely with pseudo-elements
+     so no JS/markup changes were needed. */
+  #door-screen {
+    position: fixed; inset: 0;
+    background: radial-gradient(120% 90% at 50% -10%, #1c3f5c 0%, var(--lapis) 45%, var(--lapis-2) 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 1000; padding: 16px;
+  }
+  #brand-title { color: var(--plaster); font-size: clamp(24px, 6.5vw, 38px); font-weight: 700; letter-spacing: 2px; margin-bottom: 34px; text-align: center; }
+  #brand-title span { color: var(--marigold); }
+
+  #door-frame {
+    width: min(300px, 78vw); height: min(430px, 58vh);
+    position: relative; overflow: hidden;
+    border-radius: 130px 130px 10px 10px;
+    box-shadow: 0 0 0 6px rgba(226,166,59,0.18), 0 25px 60px rgba(0,0,0,0.45);
+    background:
+      radial-gradient(circle at 50% 38%, rgba(226,166,59,0.55) 0%, rgba(226,166,59,0.15) 45%, transparent 70%),
+      linear-gradient(180deg, #23516f, #142f45);
+  }
+  #door { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  #door::before, #door::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 50%;
+    background-color: var(--lapis-2);
+    background-image:
+      linear-gradient(45deg, rgba(23,130,122,0.9) 25%, transparent 25%, transparent 75%, rgba(23,130,122,0.9) 75%),
+      linear-gradient(45deg, rgba(23,130,122,0.9) 25%, transparent 25%, transparent 75%, rgba(23,130,122,0.9) 75%);
+    background-size: 34px 34px;
+    background-position: 0 0, 17px 17px;
+    transition: transform 1.05s cubic-bezier(.7,0,.2,1);
+    z-index: 1;
+  }
+  #door::before { left: 0; border-right: 1px solid rgba(226,166,59,0.4); }
+  #door::after  { right: 0; border-left: 1px solid rgba(226,166,59,0.4); }
+  #door.open::before { transform: translateX(-100%); }
+  #door.open::after  { transform: translateX(100%); }
+  #open-label {
+    position: relative; z-index: 2;
+    color: var(--plaster); font-size: clamp(22px, 7vw, 34px); font-weight: 700;
+    letter-spacing: 6px; text-transform: uppercase; user-select: none;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  }
+  #door-handle {
+    position: absolute; z-index: 2; right: 22px; top: 50%; transform: translateY(-50%);
+    width: 14px; height: 14px; background: var(--marigold); border-radius: 50%;
+    box-shadow: 0 0 12px rgba(226,166,59,0.9);
+  }
+  #door-hint { color: rgba(241,234,217,0.65); font-size: 13px; margin-top: 26px; text-align: center; letter-spacing: 0.3px; }
+
+  /* ===================== AUTH SCREEN ===================== */
+  #auth-screen {
+    display: none; min-height: 100vh; align-items: center; justify-content: center;
+    background: radial-gradient(120% 90% at 50% -10%, #1c3f5c 0%, var(--lapis) 45%, var(--lapis-2) 100%);
+    padding: 16px;
+  }
+  .auth-box { background: var(--card); width: 380px; max-width: 100%; border-radius: 18px; padding: 30px 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.35); border-top: 4px solid var(--marigold); }
+  .auth-box .brand-mini { text-align: center; font-weight: 700; color: var(--teal); letter-spacing: 2px; margin-bottom: 8px; font-size: 21px; }
+  .auth-box .brand-mini span { color: var(--marigold-dk); }
+  .auth-box h2 { margin-bottom: 20px; color: var(--ink); text-align: center; font-size: 17px; font-weight: 700; font-family: var(--font-body); text-transform: uppercase; letter-spacing: 1px; }
+  .auth-box input {
+    width: 100%; padding: 13px 14px; margin-bottom: 12px; border: 1.5px solid var(--line);
+    border-radius: 10px; font-size: 16px; background: #fffcf6; transition: border-color .15s;
+  }
+  .auth-box input:focus { border-color: var(--teal); outline: none; }
+  .auth-box button {
+    width: 100%; padding: 13px; background: var(--teal); color: #fff; border: none;
+    border-radius: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;
+    transition: background .15s, transform .1s;
+  }
+  .auth-box button:hover { background: var(--teal-dark); }
+  .auth-box button:active { transform: scale(0.98); }
+  .switch-mode { text-align: center; margin-top: 16px; font-size: 13.5px; color: var(--muted); }
+  .switch-mode a { color: var(--marigold-dk); cursor: pointer; font-weight: 700; }
+  .error-msg { color: #fff; background: var(--brick); padding: 9px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; text-align: center; display: none; }
+  .hint-msg { color: var(--muted); font-size: 12px; margin: -6px 0 12px; }
+
+  /* ===================== BOARD / TOPBAR ===================== */
+  #board-screen { display: none; }
+  header.topbar {
+    background: var(--lapis); color: var(--plaster); padding: 14px 16px;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    position: sticky; top: 0; z-index: 50; border-bottom: 3px solid var(--teal);
+  }
+  header.topbar .logo { font-size: 21px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+  header.topbar .logo span { color: var(--marigold); }
+  header.topbar .user-info { display: flex; align-items: center; gap: 10px; font-size: 13px; min-width: 0; }
+  header.topbar .user-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34vw; color: rgba(241,234,217,0.85); }
+  header.topbar button.logout {
+    background: rgba(226,166,59,0.15); color: var(--marigold); border: 1px solid rgba(226,166,59,0.5);
+    padding: 7px 13px; border-radius: 8px; font-size: 13px; font-weight: 600; flex-shrink: 0;
+    transition: background .15s;
+  }
+  header.topbar button.logout:hover { background: rgba(226,166,59,0.28); }
+
+  .search-bar { background: var(--card); padding: 12px 16px; display: flex; gap: 10px; box-shadow: var(--shadow-sm); }
+  .search-bar input {
+    flex: 1; min-width: 0; padding: 11px 14px; border: 1.5px solid var(--line);
+    border-radius: 10px; font-size: 15px; background: #fffcf6; transition: border-color .15s;
+  }
+  .search-bar input:focus { border-color: var(--teal); outline: none; }
+
+  .container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+  .add-ad-btn {
+    display: block; width: 100%; max-width: 320px; margin: 0 auto 18px auto;
+    background: var(--marigold); color: var(--lapis-2); border: none; padding: 14px 24px;
+    border-radius: 10px; font-size: 15px; font-weight: 700; box-shadow: var(--shadow-sm);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .add-ad-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+  .add-ad-form { display: none; background: var(--card); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--line); }
+  .add-ad-form label {
+    font-size: 11.5px; color: var(--teal-dark); display: block; margin-bottom: 5px; margin-top: 10px;
+    text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700;
+  }
+  .add-ad-form label:first-child { margin-top: 0; }
+  .add-ad-form input[type=text], .add-ad-form input[type=tel], .add-ad-form textarea {
+    width: 100%; padding: 11px; margin-bottom: 4px; border: 1.5px solid var(--line);
+    border-radius: 8px; font-size: 15px; background: #fffcf6; transition: border-color .15s;
+  }
+  .add-ad-form input:focus, .add-ad-form textarea:focus { border-color: var(--teal); outline: none; }
+  .add-ad-form .img-picker { display: flex; align-items: center; gap: 12px; margin: 6px 0 4px; }
+  .add-ad-form .img-picker-btn {
+    background: var(--plaster-2); border: 1.5px dashed var(--marigold-dk); border-radius: 9px;
+    padding: 10px 14px; font-size: 13px; color: var(--teal-dark); font-weight: 600;
+  }
+  #img-preview { width: 60px; height: 60px; border-radius: 9px; object-fit: cover; display: none; border: 1.5px solid var(--line); }
+  .add-ad-form button.submit-btn {
+    background: var(--teal); color: #fff; border: none; padding: 13px 18px; border-radius: 10px;
+    font-weight: 700; width: 100%; margin-top: 12px; font-size: 15px; transition: background .15s;
+  }
+  .add-ad-form button.submit-btn:hover { background: var(--teal-dark); }
+
+  /* ===================== AD CARDS ===================== */
+  .ads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+  .ad-card {
+    background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column; border: 1px solid var(--line);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .ad-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .ad-card::before {
+    content: ""; display: block; height: 4px; flex-shrink: 0;
+    background: repeating-linear-gradient(90deg, var(--teal) 0 10px, var(--marigold) 10px 20px);
+  }
+  .ad-img { height: 120px; background: var(--plaster-2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; overflow: hidden; }
+  .ad-img img { width: 100%; height: 100%; object-fit: cover; }
+  .ad-body { padding: 11px; display: flex; flex-direction: column; flex: 1; }
+  .ad-price {
+    font-weight: 800; color: var(--teal-dark); font-size: 15px; font-variant-numeric: tabular-nums;
+    display: inline-flex; align-self: flex-start; background: rgba(226,166,59,0.18);
+    padding: 2px 8px; border-radius: 6px; margin-bottom: 2px;
+  }
+  .ad-title { font-size: 13px; margin: 6px 0 3px; font-weight: 700; line-height: 1.3; color: var(--ink); }
+  .ad-meta { font-size: 11px; color: var(--muted); margin-bottom: 2px; word-break: break-word; }
+  .ad-actions { display: flex; gap: 5px; margin-top: 9px; flex-wrap: wrap; }
+  .ad-actions button {
+    flex: 1; min-width: 60px; font-size: 11px; padding: 8px 6px; border-radius: 7px;
+    border: 1.5px solid var(--line); background: var(--plaster); font-weight: 600; color: var(--ink);
+    transition: background .12s, border-color .12s;
+  }
+  .ad-actions .call-btn { background: rgba(23,50,74,0.06); border-color: var(--lapis); color: var(--lapis); }
+  .ad-actions .call-btn:hover { background: rgba(23,50,74,0.12); }
+  .ad-actions .chat-btn { background: rgba(23,130,122,0.08); border-color: var(--teal); color: var(--teal-dark); }
+  .ad-actions .chat-btn:hover { background: rgba(23,130,122,0.16); }
+  .ad-actions .del-btn { background: rgba(184,84,58,0.08); border-color: var(--brick); color: var(--brick); }
+  .ad-actions .del-btn:hover { background: rgba(184,84,58,0.16); }
+  .empty-state { text-align: center; color: var(--muted); padding: 48px 20px; grid-column: 1/-1; font-size: 14px; }
+
+  .seller-link { color: var(--teal-dark); cursor: pointer; text-decoration: underline; font-weight: 700; }
+
+  /* ===================== CHANNEL SCREEN ===================== */
+  #channel-screen { display: none; min-height: 100vh; background: var(--plaster); }
+  .channel-header { background: linear-gradient(135deg, var(--lapis), var(--lapis-2)); color: var(--plaster); padding: 22px 16px; position: sticky; top: 0; z-index: 40; }
+  .channel-back { background: rgba(226,166,59,0.15); border: 1px solid rgba(226,166,59,0.4); color: var(--marigold); padding: 7px 13px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+  .channel-avatar {
+    width: 60px; height: 60px; border-radius: 50%; background: var(--marigold); color: var(--lapis-2);
+    display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; margin-bottom: 10px;
+    border: 3px solid rgba(241,234,217,0.5); font-family: var(--font-display);
+  }
+  .channel-name { font-size: 20px; font-weight: 700; font-family: var(--font-display); }
+  .channel-sub { font-size: 12px; opacity: 0.75; margin-top: 3px; }
+  #channel-ads-grid { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; max-width: 1000px; margin: 0 auto; }
+
+  /* ===================== MODALS (chat / call) ===================== */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,37,54,0.55); align-items: flex-end; justify-content: center; z-index: 500; }
+  .modal-box { background: var(--card); border-radius: 18px 18px 0 0; width: 100%; max-width: 420px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 -10px 40px rgba(0,0,0,0.3); }
+  .modal-header { padding: 15px 16px; background: var(--lapis); color: var(--plaster); display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--teal); }
+  .modal-header span { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .modal-header button { background: none; border: none; color: var(--plaster); font-size: 20px; line-height: 1; padding: 4px 8px; opacity: 0.8; }
+  .modal-header button:hover { opacity: 1; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; min-height: 200px; background: var(--plaster); }
+  .msg { max-width: 78%; padding: 9px 12px; border-radius: 12px; font-size: 13px; word-break: break-word; }
+  .msg.mine { align-self: flex-end; background: rgba(23,130,122,0.18); border: 1px solid rgba(23,130,122,0.3); }
+  .msg.theirs { align-self: flex-start; background: var(--card); border: 1px solid var(--line); }
+  .msg .who { font-size: 10px; color: var(--muted); margin-bottom: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .chat-input-row { display: flex; padding: 12px; gap: 8px; border-top: 1px solid var(--line); background: var(--card); }
+  .chat-input-row input { flex: 1; min-width: 0; padding: 11px; border: 1.5px solid var(--line); border-radius: 9px; font-size: 15px; }
+  .chat-input-row input:focus { border-color: var(--teal); outline: none; }
+  .chat-input-row button { background: var(--teal); color: #fff; border: none; padding: 11px 18px; border-radius: 9px; font-weight: 700; flex-shrink: 0; }
+  .chat-input-row button:hover { background: var(--teal-dark); }
+
+  .call-modal-body { padding: 38px 20px; text-align: center; background: var(--plaster); }
+  .call-icon {
+    font-size: 34px; margin: 0 auto 14px; width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(226,166,59,0.2); display: flex; align-items: center; justify-content: center;
+  }
+  #call-status { font-weight: 600; color: var(--ink); }
+  .call-note { font-size: 12px; color: var(--muted); margin-top: 16px; line-height: 1.5; }
+
+  @media (min-width: 600px) {
+    .modal-overlay { align-items: center; }
+    .modal-box { border-radius: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="door-screen">
+  <div id="brand-title">TEZ<span>BOZOR</span></div>
+  <div id="door-frame">
+    <div id="door" onclick="openDoor()">
+      <span id="open-label">OPEN</span>
+      <div id="door-handle"></div>
+    </div>
+  </div>
+  <div id="door-hint">Kirish uchun eshikni bosing</div>
+</div>
+
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="brand-mini">TEZ<span>BOZOR</span></div>
+    <div id="login-form">
+      <h2>Tizimga kirish</h2>
+      <div class="error-msg" id="login-error"></div>
+      <input type="text" id="login-username" placeholder="Foydalanuvchi nomi" autocomplete="username">
+      <input type="password" id="login-password" placeholder="Parol" autocomplete="current-password">
+      <button onclick="doLogin()">Kirish</button>
+      <div class="switch-mode">Akkountingiz yo'qmi? <a onclick="showRegister()">Ro'yxatdan o'tish</a></div>
+    </div>
+    <div id="register-form" style="display:none;">
+      <h2>Ro'yxatdan o'tish</h2>
+      <div class="error-msg" id="register-error"></div>
+      <input type="text" id="reg-username" placeholder="Foydalanuvchi nomi" autocomplete="username">
+      <div class="hint-msg">3-20 belgi: harf, raqam, pastki chiziq</div>
+      <input type="password" id="reg-password" placeholder="Parol (kamida 6 belgi)" autocomplete="new-password">
+      <input type="password" id="reg-password2" placeholder="Parolni tasdiqlang" autocomplete="new-password">
+      <button onclick="doRegister()">Ro'yxatdan o'tish</button>
+      <div class="switch-mode">Akkountingiz bormi? <a onclick="showLogin()">Kirish</a></div>
+    </div>
+  </div>
+</div>
+
+<div id="board-screen">
+  <header class="topbar">
+    <div class="logo">TEZ<span>BOZOR</span></div>
+    <div class="user-info">
+      <span id="welcome-user"></span>
+      <button class="logout" onclick="logout()">Chiqish</button>
+    </div>
+  </header>
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="E'lonlarni qidirish..." oninput="loadAds()">
+  </div>
+  <div class="container">
+    <button class="add-ad-btn" onclick="toggleAddForm()">+ E'lon joylashtirish</button>
+    <div class="error-msg" id="ad-error"></div>
+    <form class="add-ad-form" id="add-ad-form" onsubmit="return false;">
+      <label>Sarlavha</label>
+      <input type="text" id="ad-title" placeholder="Masalan: iPhone 13 Pro" maxlength="100">
+
+      <label>Narx (so'm)</label>
+      <input type="text" id="ad-price" placeholder="Masalan: 5 000 000" maxlength="30">
+
+      <label>Tavsif</label>
+      <textarea id="ad-desc" rows="3" placeholder="Holati, xususiyatlari va h.k." maxlength="1000"></textarea>
+
+      <label>Telefon raqami</label>
+      <input type="tel" id="ad-phone" placeholder="+998901234567" maxlength="20">
+
+      <label>Rasm</label>
+      <div class="img-picker">
+        <label class="img-picker-btn" for="ad-image">Rasm tanlash</label>
+        <input type="file" id="ad-image" accept="image/*" style="display:none" onchange="previewImage()">
+        <img id="img-preview" alt="preview">
+      </div>
+
+      <button type="button" class="submit-btn" onclick="addAd()">Joylashtirish</button>
+    </form>
+    <div class="ads-grid" id="ads-grid"></div>
+  </div>
+</div>
+
+<!-- CHANNEL / SELLER SHOP SCREEN -->
+<div id="channel-screen">
+  <div class="channel-header">
+    <button class="channel-back" onclick="closeChannel()">&larr; Orqaga</button>
+    <div class="channel-avatar" id="channel-avatar"></div>
+    <div class="channel-name" id="channel-name"></div>
+    <div class="channel-sub" id="channel-sub"></div>
+  </div>
+  <div id="channel-ads-grid"></div>
+</div>
+
+<div class="modal-overlay" id="chat-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span id="chat-title">Suhbat</span>
+      <button onclick="closeChat()">&times;</button>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Xabar yozing..." maxlength="500" onkeydown="if(event.key==='Enter')sendMessage()">
+      <button onclick="sendMessage()">Yuborish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="call-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span>Qo'ng'iroq</span>
+      <button onclick="closeCall()">&times;</button>
+    </div>
+    <div class="call-modal-body">
+      <div class="call-icon">☎</div>
+      <div id="call-status">Chaqirilmoqda...</div>
+      <div id="call-phone" style="font-weight:700; margin-top:8px; font-size:16px;"></div>
+      <div class="call-note">Bu demo qo'ng'iroq signali — real ovozli aloqa uchun WebRTC serveri kerak bo'ladi. Ko'rsatilgan raqamga to'g'ridan-to'g'ri qo'ng'iroq qilishingiz mumkin.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let csrfToken = '';
+let currentUser = null;
+let currentUserId = null;
+let activeAdId = null;
+let selectedImageFile = null;
+
+async function apiJson(path, opts = {}) {
+  opts.headers = opts.headers || {};
+  opts.headers['Content-Type'] = 'application/json';
+  if (opts.method && opts.method !== 'GET') opts.headers['X-CSRFToken'] = csrfToken;
+  const res = await fetch(path, opts);
+  let data = {};
+  try { data = await res.json(); } catch (e) { /* non-JSON response */ }
+  if (!res.ok) throw new Error(data.error || `Server xatosi (${res.status}). Sahifani yangilab qayta urinib ko'ring.`);
+  return data;
+}
+
+async function apiForm(path, formData) {
+  const res = await fetch(path, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: formData });
+  let data = {};
+  try { data = await res.json(); } catch (e) { /* non-JSON response */ }
+  if (!res.ok) throw new Error(data.error || `Server xatosi (${res.status}). Sahifani yangilab qayta urinib ko'ring.`);
+  return data;
+}
+
+async function refreshCsrf() {
+  const d = await apiJson('/api/csrf');
+  csrfToken = d.csrf_token;
+}
+
+function openDoor() {
+  const door = document.getElementById('door');
+  door.classList.add('open');
+  setTimeout(() => {
+    document.getElementById('door-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+  }, 900);
+}
+
+function showRegister() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('register-form').style.display = 'block';
+}
+function showLogin() {
+  document.getElementById('register-form').style.display = 'none';
+  document.getElementById('login-form').style.display = 'block';
+}
+function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block'; }
+function hideErr(id) { document.getElementById(id).style.display = 'none'; }
+
+async function doRegister() {
+  hideErr('register-error');
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const password2 = document.getElementById('reg-password2').value;
+  if (password !== password2) { showErr('register-error', "Parollar mos emas"); return; }
+  try {
+    await refreshCsrf();
+    const d = await apiJson('/api/register', { method: 'POST', body: JSON.stringify({ username, password }) });
+    currentUser = d.username;
+    await refreshCsrf();
+    await loadCurrentUserId();
+    enterBoard();
+  } catch (e) { showErr('register-error', e.message); }
+}
+
+async function doLogin() {
+  hideErr('login-error');
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  try {
+    await refreshCsrf();
+    const d = await apiJson('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    currentUser = d.username;
+    await refreshCsrf();
+    await loadCurrentUserId();
+    enterBoard();
+  } catch (e) { showErr('login-error', e.message); }
+}
+
+async function loadCurrentUserId() {
+  const d = await apiJson('/api/me');
+  currentUserId = d.user ? d.user.id : null;
+}
+
+async function logout() {
+  await apiJson('/api/logout', { method: 'POST' });
+  currentUser = null;
+  await refreshCsrf();
+  document.getElementById('board-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  showLogin();
+}
+
+function enterBoard() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('board-screen').style.display = 'block';
+  document.getElementById('welcome-user').textContent = 'Salom, ' + currentUser;
+  loadAds();
+}
+
+function toggleAddForm() {
+  const f = document.getElementById('add-ad-form');
+  f.style.display = f.style.display === 'block' ? 'none' : 'block';
+}
+
+function previewImage() {
+  const input = document.getElementById('ad-image');
+  const preview = document.getElementById('img-preview');
+  const file = input.files[0];
+  if (!file) { preview.style.display = 'none'; selectedImageFile = null; return; }
+  selectedImageFile = file;
+  const reader = new FileReader();
+  reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
+  reader.readAsDataURL(file);
+}
+
+async function addAd() {
+  hideErr('ad-error');
+  const title = document.getElementById('ad-title').value.trim();
+  const price = document.getElementById('ad-price').value.trim();
+  const description = document.getElementById('ad-desc').value.trim();
+  const phone = document.getElementById('ad-phone').value.trim();
+
+  const fd = new FormData();
+  fd.append('title', title);
+  fd.append('price', price);
+  fd.append('description', description);
+  fd.append('phone', phone);
+  if (selectedImageFile) fd.append('image', selectedImageFile);
+
+  try {
+    await apiForm('/api/ads', fd);
+    document.getElementById('ad-title').value = '';
+    document.getElementById('ad-price').value = '';
+    document.getElementById('ad-desc').value = '';
+    document.getElementById('ad-phone').value = '';
+    document.getElementById('ad-image').value = '';
+    document.getElementById('img-preview').style.display = 'none';
+    selectedImageFile = null;
+    document.getElementById('add-ad-form').style.display = 'none';
+    loadAds();
+  } catch (e) { showErr('ad-error', e.message); }
+}
+
+async function deleteAd(id) {
+  if (!confirm("E'lonni o'chirmoqchimisiz?")) return;
+  try { await apiJson('/api/ads/' + id, { method: 'DELETE' }); loadAds(); } catch (e) { alert(e.message); }
+}
+
+async function loadAds() {
+  const q = document.getElementById('search-input').value.trim();
+  const d = await apiJson('/api/ads?q=' + encodeURIComponent(q));
+  const grid = document.getElementById('ads-grid');
+  if (d.ads.length === 0) { grid.innerHTML = '<div class="empty-state">E\'lonlar topilmadi</div>'; return; }
+  grid.innerHTML = d.ads.map(a => `
+    <div class="ad-card">
+      <div class="ad-img">${a.image_filename ? `<img src="/uploads/${encodeURIComponent(a.image_filename)}" alt="">` : "Rasm yo'q"}</div>
+      <div class="ad-body">
+        <div class="ad-price">${escapeHtml(a.price)} so'm</div>
+        <div class="ad-title">${escapeHtml(a.title)}</div>
+        <div class="ad-meta">${escapeHtml(a.description || '')}</div>
+        ${a.phone ? `<div class="ad-meta">📞 ${escapeHtml(a.phone)}</div>` : ''}
+        <div class="ad-meta">E'lon beruvchi: <span class="seller-link" onclick="openChannel('${escapeJs(a.author)}')">${escapeHtml(a.author)}</span></div>
+        <div class="ad-actions">
+          <button class="chat-btn" onclick="openChat(${a.id}, '${escapeJs(a.title)}', ${a.author_id})">💬 Chat</button>
+          <button class="call-btn" onclick="openCall(${a.id}, '${escapeJs(a.phone || '')}')">📞 Qo'ng'iroq</button>
+          ${a.author === currentUser ? `<button class="del-btn" onclick="deleteAd(${a.id})">🗑 O'chirish</button>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeJs(s) { return (s || '').replace(/'/g, "\\'"); }
+
+let chatPollTimer = null;
+let activeChatWith = null;   // the other participant's user id, from the current viewer's perspective
+let activeChatIsOwner = false;
+
+async function openChat(adId, title, ownerId) {
+  activeAdId = adId;
+  activeChatIsOwner = (ownerId !== undefined && String(ownerId) === String(currentUserId));
+  document.getElementById('chat-title').textContent = title;
+
+  if (activeChatIsOwner) {
+    // Seller: pick which buyer's conversation to open first.
+    try {
+      const d = await apiJson('/api/conversations/' + adId);
+      if (d.conversations.length === 0) {
+        document.getElementById('chat-messages').innerHTML = '<div class="empty-state">Hozircha hech kim yozmagan</div>';
+        document.getElementById('chat-modal').style.display = 'flex';
+        return;
+      }
+      if (d.conversations.length === 1) {
+        activeChatWith = d.conversations[0].buyer_id;
+      } else {
+        const box = document.getElementById('chat-messages');
+        box.innerHTML = '<div style="padding:10px;font-size:13px;color:#666;">Kim bilan suhbat?</div>' +
+          d.conversations.map(c => `<button class="seller-link" style="display:block;width:100%;text-align:left;padding:10px;border:none;background:#f7f7f7;border-radius:8px;margin-bottom:6px;cursor:pointer;" onclick="selectBuyerChat(${c.buyer_id})">${escapeHtml(c.buyer_name)}</button>`).join('');
+        document.getElementById('chat-modal').style.display = 'flex';
+        return;
+      }
+    } catch (e) { alert(e.message); return; }
+  } else {
+    activeChatWith = null; // buyer always talks to the ad owner
+  }
+
+  document.getElementById('chat-modal').style.display = 'flex';
+  await loadMessages();
+  chatPollTimer = setInterval(loadMessages, 3000);
+}
+
+function selectBuyerChat(buyerId) {
+  activeChatWith = buyerId;
+  loadMessages();
+  if (!chatPollTimer) chatPollTimer = setInterval(loadMessages, 3000);
+}
+
+function closeChat() {
+  document.getElementById('chat-modal').style.display = 'none';
+  if (chatPollTimer) clearInterval(chatPollTimer);
+  chatPollTimer = null;
+  activeAdId = null;
+  activeChatWith = null;
+}
+
+async function loadMessages() {
+  if (!activeAdId) return;
+  if (activeChatIsOwner && !activeChatWith) return; // waiting for buyer pick
+  try {
+    let url = '/api/messages/' + activeAdId;
+    if (activeChatIsOwner) url += '?with=' + activeChatWith;
+    const d = await apiJson(url);
+    const box = document.getElementById('chat-messages');
+    box.innerHTML = d.messages.map(m => `
+      <div class="msg ${m.sender_name === currentUser ? 'mine' : 'theirs'}">
+        <div class="who">${escapeHtml(m.sender_name)}</div>
+        ${escapeHtml(m.body)}
+      </div>
+    `).join('');
+    box.scrollTop = box.scrollHeight;
+  } catch (e) { /* silent poll failure */ }
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const body = input.value.trim();
+  if (!body || !activeAdId) return;
+  if (activeChatIsOwner && !activeChatWith) return;
+  try {
+    const payload = { body };
+    if (activeChatIsOwner) payload.to = activeChatWith;
+    await apiJson('/api/messages/' + activeAdId, { method: 'POST', body: JSON.stringify(payload) });
+    input.value = '';
+    loadMessages();
+  } catch (e) { alert(e.message); }
+}
+
+async function openCall(adId, phone) {
+  document.getElementById('call-modal').style.display = 'flex';
+  document.getElementById('call-status').textContent = 'Chaqirilmoqda...';
+  document.getElementById('call-phone').textContent = phone || '';
+  try {
+    const d = await apiJson('/api/call/' + adId, { method: 'POST' });
+    document.getElementById('call-phone').textContent = d.phone || phone || '';
+    setTimeout(() => { document.getElementById('call-status').textContent = "Qo'ng'iroq qayd etildi"; }, 800);
+  } catch (e) {
+    document.getElementById('call-status').textContent = e.message;
+    document.getElementById('call-phone').textContent = '';
+  }
+}
+function closeCall() { document.getElementById('call-modal').style.display = 'none'; }
+
+async function openChannel(username) {
+  try {
+    const d = await apiJson('/api/channel/' + encodeURIComponent(username));
+    document.getElementById('channel-avatar').textContent = d.seller.username.charAt(0).toUpperCase();
+    document.getElementById('channel-name').textContent = d.seller.username;
+    document.getElementById('channel-sub').textContent = `${d.ads_count} ta e'lon`;
+    const grid = document.getElementById('channel-ads-grid');
+    if (d.ads.length === 0) {
+      grid.innerHTML = '<div class="empty-state">Bu sotuvchida hozircha e\'lon yo\'q</div>';
+    } else {
+      grid.innerHTML = d.ads.map(a => `
+        <div class="ad-card">
+          <div class="ad-img">${a.image_filename ? `<img src="/uploads/${encodeURIComponent(a.image_filename)}" alt="">` : "Rasm yo'q"}</div>
+          <div class="ad-body">
+            <div class="ad-price">${escapeHtml(a.price)} so'm</div>
+            <div class="ad-title">${escapeHtml(a.title)}</div>
+            <div class="ad-meta">${escapeHtml(a.description || '')}</div>
+            ${a.phone ? `<div class="ad-meta">📞 ${escapeHtml(a.phone)}</div>` : ''}
+            <div class="ad-actions">
+              <button class="chat-btn" onclick="openChat(${a.id}, '${escapeJs(a.title)}', ${d.seller.id})">💬 Chat</button>
+              <button class="call-btn" onclick="openCall(${a.id}, '${escapeJs(a.phone || '')}')">📞 Qo'ng'iroq</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+    document.getElementById('board-screen').style.display = 'none';
+    document.getElementById('channel-screen').style.display = 'block';
+  } catch (e) { alert(e.message); }
+}
+
+function closeChannel() {
+  document.getElementById('channel-screen').style.display = 'none';
+  document.getElementById('board-screen').style.display = 'block';
+}
+
+(async function init() {
+  await refreshCsrf();
+  const d = await apiJson('/api/me');
+  if (d.user) {
+    currentUser = d.user.username;
+    currentUserId = d.user.id;
+    document.getElementById('door-screen').style.display = 'none';
+    enterBoard();
+  }
+})();
+</script>
+</body>
+</html>
