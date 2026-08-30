@@ -1,0 +1,17 @@
+Flask==3.0.3
+Flask-WTF==1.2.1
+Werkzeug==3.0.3
+Pillow==10.4.0
+
+# Optional but recommended for production (multi-worker) deployments:
+# shares rate-limit / login-lockout state across Gunicorn/uWSGI worker processes.
+redis==5.0.7
+
+# Production WSGI server (see wsgi.py). Not needed for local development,
+# where `python app.py` uses Flask's built-in dev server.
+gunicorn==22.0.0
+
+# Optional: lets the app load SECRET_KEY / REDIS_URL / etc. from a local .env
+# file for development convenience. Not required in production if you set real
+# environment variables instead.
+python-dotenv==1.0.1
