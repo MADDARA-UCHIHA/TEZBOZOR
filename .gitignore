@@ -1,0 +1,7 @@
+.env
+bozor.db
+__pycache__/
+*.pyc
+venv/
+static/uploads/*
+!static/uploads/.gitkeep
