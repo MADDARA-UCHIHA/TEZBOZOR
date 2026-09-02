@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TEZBOZOR Admin</title>
+  <style>
+    :root { --navy:#102a40; --teal:#17827a; --gold:#e2a63b; --bg:#f1ead9; --card:#fffdf8; --muted:#756e61; --red:#b8543a; }
+    * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:#211f1a; font:14px Arial,sans-serif; }
+    .wrap { width:min(1100px,calc(100% - 28px)); margin:28px auto; } .panel { background:var(--card); border-radius:16px; padding:22px; box-shadow:0 8px 26px #17324a1c; }
+    h1 { margin:0 0 5px; color:var(--navy); } h2 { color:var(--navy); margin:26px 0 10px; } .muted { color:var(--muted); }
+    input { width:100%; padding:12px; margin:7px 0; border:1px solid #d8cbb0; border-radius:9px; font-size:15px; }
+    .password-wrap { position:relative; } .password-wrap input { padding-right:48px; }
+    .password-toggle { position:absolute; right:7px; top:13px; padding:6px 9px; background:transparent; color:var(--navy); font-size:17px; line-height:1; }
+    .hidden { display:none; }
+    button { border:0; border-radius:8px; padding:10px 14px; background:var(--teal); color:white; font-weight:700; cursor:pointer; }
+    button.danger { background:var(--red); } button.secondary { background:var(--navy); } .error { color:#fff; background:var(--red); padding:10px; border-radius:8px; display:none; margin-bottom:10px; }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:20px; } .stat { padding:16px; background:#e8f1ec; border-radius:12px; } .stat b { display:block; font-size:27px; color:var(--teal); }
+    table { width:100%; border-collapse:collapse; } th,td { text-align:left; padding:10px 7px; border-bottom:1px solid #e4dac5; vertical-align:middle; } th { color:var(--muted); }
+    .table-wrap { overflow-x:auto; } .hidden { display:none; } .top { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    @media(max-width:600px) { .wrap{width:calc(100% - 18px);margin:10px auto}.panel{padding:15px}.stats{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column} th,td{font-size:12px} }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="panel" id="login-panel">
+      <h1>TEZBOZOR Admin</h1><p class="muted">Bu sahifa faqat serverda sozlangan admin uchun.</p>
+      <div class="error" id="login-error"></div>
+      <input id="admin-username" autocomplete="username" placeholder="Admin username">
+      <div class="password-wrap"><input id="admin-password" autocomplete="current-password" type="password" placeholder="Admin parol"><button class="password-toggle" type="button" id="password-toggle" aria-label="Parolni ko'rsatish" onclick="togglePassword()">&#128065;</button></div>
+      <button onclick="adminLogin()">Maxfiy panelga kirish</button>
+    </section>
+    <section class="panel hidden" id="dashboard">
+      <div class="top"><div><h1>Admin panel</h1><p class="muted">Foydalanuvchilar va e'lonlarni boshqarish</p></div><button class="secondary" onclick="adminLogout()">Chiqish</button></div>
+      <div class="error" id="dashboard-error"></div>
+      <div class="stats"><div class="stat">Foydalanuvchilar<b id="users-count">0</b></div><div class="stat">E'lonlar<b id="ads-count">0</b></div><div class="stat">Xabarlar<b id="messages-count">0</b></div></div>
+      <h2>Oxirgi foydalanuvchilar</h2><div class="table-wrap"><table><thead><tr><th>ID</th><th>Username</th><th>Sana</th><th></th></tr></thead><tbody id="users-list"></tbody></table></div>
+      <h2>Oxirgi e'lonlar</h2><div class="table-wrap"><table><thead><tr><th>ID</th><th>Sarlavha</th><th>Narx</th><th>Sotuvchi</th><th></th></tr></thead><tbody id="ads-list"></tbody></table></div>
+    </section>
+  </main>
+  <script>
+    let csrfToken = '';
+    async function csrf() { const r = await fetch('/api/csrf'); const d = await r.json(); csrfToken = d.csrf_token; }
+    async function api(path, options = {}) {
+      options.headers = Object.assign({'Content-Type':'application/json','X-CSRFToken':csrfToken}, options.headers || {});
+      const r = await fetch(path, options); const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Server xatosi'); return d;
+    }
+    function message(id, text) { const e=document.getElementById(id); e.textContent=text; e.style.display='block'; }
+    async function restoreAdminSession() {
+      try { await csrf(); await loadDashboard(); document.getElementById('login-panel').classList.add('hidden'); document.getElementById('dashboard').classList.remove('hidden'); }
+      catch (e) { /* no active admin session */ }
+    }
+    function togglePassword() {
+      const input = document.getElementById('admin-password');
+      const button = document.getElementById('password-toggle');
+      const visible = input.type === 'text';
+      input.type = visible ? 'password' : 'text';
+      button.setAttribute('aria-label', visible ? "Parolni ko'rsatish" : "Parolni yashirish");
+      button.textContent = visible ? '\u{1F441}' : '\u{1F648}';
+    }
+    async function adminLogin() {
+      document.getElementById('login-error').style.display='none';
+      try { await csrf(); await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:document.getElementById('admin-username').value,password:document.getElementById('admin-password').value})}); await csrf(); document.getElementById('login-panel').classList.add('hidden'); document.getElementById('dashboard').classList.remove('hidden'); await loadDashboard(); }
+      catch(e) { message('login-error',e.message); }
+    }
+    async function loadDashboard() {
+      const d=await api('/api/admin/overview'); document.getElementById('users-count').textContent=d.stats.users; document.getElementById('ads-count').textContent=d.stats.ads; document.getElementById('messages-count').textContent=d.stats.messages;
+        document.getElementById('users-list').innerHTML=d.users.map(u=>`<tr><td>${u.id}</td><td>${escapeHtml(u.username)}</td><td>${escapeHtml(u.created_at)}</td><td><button class="danger" onclick="removeUser(${u.id},'${escapeJs(u.username)}')">O'chirish</button></td></tr>`).join('');
+        document.getElementById('ads-list').innerHTML=d.ads.map(a=>`<tr><td>${a.id}</td><td>${escapeHtml(a.title)}</td><td>${escapeHtml(a.price)}</td><td>${escapeHtml(a.author)}</td><td><button class="danger" onclick="removeAd(${a.id})">O'chirish</button></td></tr>`).join('');
+    }
+    async function removeAd(id) { if(!confirm("E'lon o'chirilsinmi?")) return; try { await api('/api/admin/ads/'+id,{method:'DELETE'}); await loadDashboard(); } catch(e) { message('dashboard-error',e.message); } }
+    async function removeUser(id,name) { if(!confirm(name+" foydalanuvchisi va uning e'lonlari o'chirilsinmi?")) return; try { await api('/api/admin/users/'+id,{method:'DELETE'}); await loadDashboard(); } catch(e) { message('dashboard-error',e.message); } }
+    async function adminLogout() { try { await api('/api/admin/logout',{method:'POST'}); location.reload(); } catch(e) { message('dashboard-error',e.message); } }
+    function escapeHtml(v) { const d=document.createElement('div'); d.textContent=v ?? ''; return d.innerHTML; }
+    function escapeJs(v) { return String(v ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' '); }
+    restoreAdminSession();
+  </script>
+</body>
+</html>

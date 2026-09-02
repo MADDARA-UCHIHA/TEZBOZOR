@@ -15,6 +15,19 @@ o'zi qo'shadi).
 
 ## Nima qilingan
 
+- **Maxfiy admin panel**: `/admin` manzilida alohida admin sessiyasi bilan
+  foydalanuvchilar, e'lonlar va xabarlar statistikasi ko'rsatiladi. Kirish
+  ma'lumotlari faqat `ADMIN_USERNAME` va `ADMIN_PASSWORD` environment
+  o'zgaruvchilaridan olinadi; ularni kodga yoki GitHub'ga yozmang. Oddiy login
+  sahifasida admin ma'lumotlari to'g'ri kiritilsa, foydalanuvchi avtomatik
+  `/admin` paneliga o'tadi. Admin username oddiy ro'yxatdan o'tishda band
+  qilinadi. Admin kirishi uchun bitta kuchli parol yetarli; noto'g'ri loginlar
+  rate-limit orqali vaqtincha bloklanadi. Admin panel uchun HTTPS, kuchli noyob
+  parol va production'da `REQUIRE_SECRET_KEY=1` ishlatish shart.
+
+- Login va ro'yxatdan o'tish oynalarida Foydalanish shartlari hamda Maxfiylik
+  siyosati ko'rsatiladi; yangi akkaunt yaratishda ularni qabul qilish majburiy.
+
 - **Ma'lumotlar bazasi**: SQLite (`bozor.db`) — users, ads, messages, call_logs
   jadvallari.
 - **Ro'yxatdan o'tish/kirish**: parollar `werkzeug.security` bilan hash qilinadi

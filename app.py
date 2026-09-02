@@ -4,6 +4,7 @@ import re
 import time
 import uuid
 import json
+import hmac
 import logging
 from contextlib import suppress
 from datetime import datetime, timedelta
@@ -16,6 +17,8 @@ from flask_wtf import CSRFProtect
 from flask_wtf.csrf import generate_csrf
 from PIL import Image
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Load variables from a local .env file if python-dotenv is installed and the file
 # exists (typical for local development). In real deployments (systemd, Docker,
 # Gunicorn behind a process manager, etc.) real environment variables are usually
@@ -23,7 +26,8 @@ from PIL import Image
 # already set in the actual environment.
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    # Resolve configuration beside the application, not from the process cwd.
+    load_dotenv(os.path.join(BASE_DIR, ".env"))
 except ImportError:
     pass
 
@@ -33,7 +37,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bozor_app")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "bozor.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -67,6 +70,9 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Strict"
 app.config["SESSION_PERMANENT"] = True
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=12)
 app.config["SESSION_COOKIE_NAME"] = "tezbozor_session"
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "").strip()
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+ADMIN_SESSION_SECONDS = 30 * 60
 # Set SECURE_COOKIES=1 in the environment once the site is served over HTTPS in production
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SECURE_COOKIES") == "1"
 app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024  # 6MB max request body (form + image)
@@ -402,6 +408,31 @@ def login_required(fn):
     return wrapper
 
 
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        authenticated_at = session.get("admin_authenticated_at", 0)
+        session_is_fresh = isinstance(authenticated_at, (int, float)) and (
+            time.time() - authenticated_at < ADMIN_SESSION_SECONDS
+        )
+        if (
+            not session.get("admin_authenticated")
+            or not ADMIN_USERNAME
+            or session.get("admin_username") != ADMIN_USERNAME
+            or not session_is_fresh
+        ):
+            session.pop("admin_authenticated", None)
+            session.pop("admin_username", None)
+            session.pop("admin_authenticated_at", None)
+            return jsonify({
+                "error": "Admin sessiyasi tugagan. Qayta kiring.",
+                "code": "admin_session_required",
+            }), 403
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 # ---------- pages ----------
 @app.route("/")
 def index():
@@ -413,6 +444,107 @@ def api_csrf():
     return jsonify({"csrf_token": generate_csrf()})
 
 
+@app.route("/admin")
+def admin_page():
+    return render_template("admin.html")
+
+
+@app.route("/api/admin/login", methods=["POST"])
+@rate_limit(max_calls=5, window_seconds=300, key_fn=client_ip)
+def api_admin_login():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    if not ADMIN_USERNAME or not ADMIN_PASSWORD:
+        logger.error("Admin login attempted without ADMIN_USERNAME/ADMIN_PASSWORD configured")
+        return jsonify({"error": "Admin kirishi serverda sozlanmagan"}), 503
+    if not hmac.compare_digest(username, ADMIN_USERNAME) or not hmac.compare_digest(password, ADMIN_PASSWORD):
+        logger.warning("Failed admin login for username %r from %s", username, client_ip())
+        return jsonify({"error": "Admin login yoki parol noto'g'ri"}), 401
+    session.clear()
+    session.permanent = True
+    session["admin_authenticated"] = True
+    session["admin_username"] = ADMIN_USERNAME
+    session["admin_authenticated_at"] = time.time()
+    logger.info("Admin session started for %s from %s", ADMIN_USERNAME, client_ip())
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/logout", methods=["POST"])
+def api_admin_logout():
+    if session.get("admin_authenticated"):
+        logger.info("Admin session ended for %s from %s", session.get("admin_username"), client_ip())
+    session.clear()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/overview")
+@admin_required
+def api_admin_overview():
+    db = get_db()
+    stats = {
+        "users": db.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+        "ads": db.execute("SELECT COUNT(*) FROM ads").fetchone()[0],
+        "messages": db.execute("SELECT COUNT(*) FROM messages").fetchone()[0],
+    }
+    users = db.execute(
+        "SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 100"
+    ).fetchall()
+    ads = db.execute(
+        """SELECT ads.id, ads.title, ads.price, ads.created_at, users.username AS author
+           FROM ads JOIN users ON users.id = ads.user_id
+           ORDER BY ads.id DESC LIMIT 100"""
+    ).fetchall()
+    return jsonify({
+        "stats": stats,
+        "users": [dict(row) for row in users],
+        "ads": [dict(row) for row in ads],
+    })
+
+
+@app.route("/api/admin/ads/<int:ad_id>", methods=["DELETE"])
+@admin_required
+@rate_limit(max_calls=30, window_seconds=600, key_fn=current_user_key)
+def api_admin_delete_ad(ad_id):
+    db = get_db()
+    ad = db.execute("SELECT image_filename FROM ads WHERE id = ?", (ad_id,)).fetchone()
+    if not ad:
+        return jsonify({"error": "E'lon topilmadi"}), 404
+    image_filenames = ad_image_names(ad_id, ad["image_filename"])
+    db.execute("DELETE FROM ads WHERE id = ?", (ad_id,))
+    db.commit()
+    for filename in image_filenames:
+        with suppress(OSError):
+            os.remove(os.path.join(UPLOAD_DIR, filename))
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])
+@admin_required
+@rate_limit(max_calls=30, window_seconds=600, key_fn=current_user_key)
+def api_admin_delete_user(user_id):
+    db = get_db()
+    user = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        return jsonify({"error": "Foydalanuvchi topilmadi"}), 404
+    image_rows = db.execute(
+        """SELECT user_profiles.avatar_filename FROM user_profiles
+           WHERE user_profiles.user_id = ?""", (user_id,)
+    ).fetchall()
+    ad_rows = db.execute(
+        "SELECT id, image_filename FROM ads WHERE user_id = ?", (user_id,)
+    ).fetchall()
+    filenames = [row["avatar_filename"] for row in image_rows if row["avatar_filename"]]
+    for ad in ad_rows:
+        filenames.extend(ad_image_names(ad["id"], ad["image_filename"]))
+    db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    db.commit()
+    for filename in set(filenames):
+        with suppress(OSError):
+            os.remove(os.path.join(UPLOAD_DIR, filename))
+    return jsonify({"ok": True})
+
+
 # ---------- auth endpoints ----------
 @app.route("/api/register", methods=["POST"])
 @rate_limit(max_calls=5, window_seconds=300, key_fn=client_ip)
@@ -420,9 +552,13 @@ def api_register():
     data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
+    if data.get("terms_accepted") is not True:
+        return jsonify({"error": "Ro'yxatdan o'tish uchun Foydalanish shartlarini qabul qiling"}), 400
 
     if not valid_username(username):
         return jsonify({"error": "Foydalanuvchi nomi harf bilan boshlanib, 3-20 belgidan iborat bo'lishi kerak (harf, raqam, _)"}), 400
+    if ADMIN_USERNAME and username.casefold() == ADMIN_USERNAME.casefold():
+        return jsonify({"error": "Bu foydalanuvchi nomi allaqachon band"}), 409
     if not (password_is_valid := valid_password(password)):
         return jsonify({"error": "Parol kamida 8 belgidan iborat bo'lib, harf va raqamni o'z ichiga olishi kerak"}), 400
 
@@ -454,6 +590,16 @@ def api_login():
     data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
+
+    if ADMIN_USERNAME and ADMIN_PASSWORD and hmac.compare_digest(username, ADMIN_USERNAME) and hmac.compare_digest(password, ADMIN_PASSWORD):
+        ip = request.remote_addr or "unknown"
+        clear_attempts(ip)
+        session.clear()
+        session.permanent = True
+        session["admin_authenticated"] = True
+        session["admin_username"] = ADMIN_USERNAME
+        session["admin_authenticated_at"] = time.time()
+        return jsonify({"ok": True, "username": ADMIN_USERNAME, "is_admin": True})
 
     db = get_db()
     user = db.execute("SELECT id, username, password_hash FROM users WHERE username = ?", (username,)).fetchone()

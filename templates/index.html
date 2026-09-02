@@ -127,6 +127,9 @@
     border-radius: 10px; font-size: 16px; background: #fffcf6; transition: border-color .15s;
   }
   .auth-box input:focus { border-color: var(--teal); outline: none; }
+  .password-wrap { position: relative; }
+  .password-wrap input { padding-right: 48px; }
+  .password-toggle { position: absolute; right: 7px; top: 7px; width: auto !important; padding: 7px 9px !important; background: transparent !important; color: var(--lapis) !important; font-size: 17px !important; line-height: 1; }
   .auth-box button {
     width: 100%; padding: 13px; background: var(--teal); color: #fff; border: none;
     border-radius: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;
@@ -136,6 +139,14 @@
   .auth-box button:active { transform: scale(0.98); }
   .switch-mode { text-align: center; margin-top: 16px; font-size: 13.5px; color: var(--muted); }
   .switch-mode a { color: var(--marigold-dk); cursor: pointer; font-weight: 700; }
+  .terms-check { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .terms-check input { width: auto; margin: 2px 0 0; accent-color: var(--teal); }
+  .terms-link { color: var(--teal-dark); font-weight: 700; text-decoration: underline; cursor: pointer; }
+  .terms-box { max-height: 82vh; }
+  .terms-body { overflow-y: auto; padding: 18px; color: var(--ink); font-size: 12px; line-height: 1.6; }
+  .terms-body h3 { margin: 12px 0 4px; color: var(--teal-dark); font-size: 14px; }
+  .terms-body h3:first-child { margin-top: 0; }
+  .terms-body p { margin-bottom: 8px; }
   .error-msg { color: #fff; background: var(--brick); padding: 9px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; text-align: center; display: none; position: relative; z-index: 2; }
   .hint-msg { color: var(--muted); font-size: 12px; margin: -6px 0 12px; }
 
@@ -327,8 +338,9 @@
       <h2>Tizimga kirish</h2>
       <div class="error-msg" id="login-error"></div>
       <input type="text" id="login-username" placeholder="Foydalanuvchi nomi" autocomplete="username">
-      <input type="password" id="login-password" placeholder="Parol" autocomplete="current-password">
+      <div class="password-wrap"><input type="password" id="login-password" placeholder="Parol" autocomplete="current-password"><button class="password-toggle" type="button" aria-label="Parolni ko'rsatish" onclick="togglePasswordField('login-password', this)">&#128065;</button></div>
       <button onclick="doLogin()">Kirish</button>
+      <div class="switch-mode"><a onclick="openTerms()">Foydalanish shartlari va Maxfiylik siyosati</a></div>
       <div class="switch-mode">Akkountingiz yo'qmi? <a onclick="showRegister()">Ro'yxatdan o'tish</a></div>
     </div>
     <div id="register-form" style="display:none;">
@@ -336,10 +348,39 @@
       <div class="error-msg" id="register-error"></div>
       <input type="text" id="reg-username" placeholder="Foydalanuvchi nomi" autocomplete="username">
       <div class="hint-msg">3-20 belgi: harf, raqam, pastki chiziq</div>
-      <input type="password" id="reg-password" placeholder="Parol (kamida 8 belgi, harf va raqam)" autocomplete="new-password">
-      <input type="password" id="reg-password2" placeholder="Parolni tasdiqlang" autocomplete="new-password">
+      <div class="password-wrap"><input type="password" id="reg-password" placeholder="Parol (kamida 8 belgi, harf va raqam)" autocomplete="new-password"><button class="password-toggle" type="button" aria-label="Parolni ko'rsatish" onclick="togglePasswordField('reg-password', this)">&#128065;</button></div>
+      <div class="password-wrap"><input type="password" id="reg-password2" placeholder="Parolni tasdiqlang" autocomplete="new-password"><button class="password-toggle" type="button" aria-label="Parolni ko'rsatish" onclick="togglePasswordField('reg-password2', this)">&#128065;</button></div>
+      <label class="terms-check"><input type="checkbox" id="terms-accepted"> <span>Men <a class="terms-link" onclick="openTerms()">Foydalanish shartlari</a> va Maxfiylik siyosatini o'qib, qabul qilaman.</span></label>
       <button onclick="doRegister()">Ro'yxatdan o'tish</button>
       <div class="switch-mode">Akkountingiz bormi? <a onclick="showLogin()">Kirish</a></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="terms-modal">
+  <div class="modal-box terms-box">
+    <div class="modal-header"><span>Foydalanish shartlari</span><button onclick="closeTerms()">&times;</button></div>
+    <div class="terms-body">
+      <h3>1. Xizmat haqida</h3>
+      <p>TEZBOZOR foydalanuvchilarga mahsulot va xizmatlar haqida e'lon joylashtirish, qidirish va chat orqali muloqot qilish imkonini beruvchi onlayn platformadir. TEZBOZOR xaridor va sotuvchi o'rtasidagi bitimning tarafi emas.</p>
+      <h3>2. Akkount</h3>
+      <p>Ro'yxatdan o'tishda to'g'ri ma'lumot kiriting. Parolingizni sir saqlash va akkountingiz orqali amalga oshirilgan harakatlar uchun javob berish sizning zimmangizda. Boshqa shaxs nomidan akkount ochish taqiqlanadi.</p>
+      <h3>3. E'lonlar</h3>
+      <p>E'lonlar qonuniy, aniq va chalg'itmaydigan bo'lishi kerak. Soxta mahsulot, noqonuniy buyum, firibgarlik, spam, haqorat, nafrat, tahdid va mualliflik huquqini buzuvchi kontent taqiqlanadi. Foydalanuvchi joylashtirgan rasm, matn va ma'lumotlar uchun o'zi javobgar.</p>
+      <h3>4. Savdo xavfsizligi</h3>
+      <p>Uchrashuv, to'lov va yetkazib berishda ehtiyot bo'ling. Oldindan pul yuborishdan oldin ma'lumotlarni tekshiring. TEZBOZOR bitim natijasi, mahsulot sifati, yetkazib berish yoki foydalanuvchilarning va'dalari uchun kafolat bermaydi.</p>
+      <h3>5. Chat va aloqa</h3>
+      <p>Chatdan faqat qonuniy va hurmatli muloqot uchun foydalaning. Shaxsiy ma'lumotlar, karta paroli, SMS-kod va boshqa maxfiy ma'lumotlarni yubormang. Spam yoki ta'qib aniqlansa, akkaunt cheklanishi mumkin.</p>
+      <h3>6. Shaxsiy ma'lumotlar</h3>
+      <p>Platforma akkaunt nomi, sessiya ma'lumotlari, e'lonlar, yuklangan rasmlar va chat xabarlarini xizmatni ishlatish uchun saqlashi mumkin. Ma'lumotlar xavfsizlik, texnik xizmat va qonuniy talablar doirasida qayta ishlanadi. Parollar ochiq ko'rinishda saqlanmaydi.</p>
+      <h3>7. Kontentni boshqarish</h3>
+      <p>TEZBOZOR qoidabuzar e'lonlarni o'chirish, akkauntni vaqtincha yoki doimiy cheklash va zarur hollarda ma'lumotlarni vakolatli organlarga taqdim etish huquqiga ega.</p>
+      <h3>8. Javobgarlik</h3>
+      <p>Platformadan foydalanish sizning xavfingiz ostida amalga oshiriladi. Xizmat uzilishi yoki foydalanuvchilar harakatidan kelib chiqadigan zararlar uchun TEZBOZOR qonunda ruxsat etilgan doirada javobgar bo'lmaydi.</p>
+      <h3>9. Shartlarning o'zgarishi</h3>
+      <p>Shartlar xizmat rivojlanishi yoki qonunchilik o'zgarishi sababli yangilanishi mumkin. Yangilangan shartlar ushbu oynada e'lon qilinadi. O'zgarishlardan keyin xizmatdan foydalanishni davom ettirish ularni qabul qilganingizni anglatadi.</p>
+      <h3>10. Aloqa</h3>
+      <p>Qoidabuzarlik yoki maxfiylik bo'yicha savollar bo'lsa, platforma egasiga murojaat qiling. Ushbu matn umumiy axborot uchun bo'lib, mahalliy yurist maslahati o'rnini bosmaydi.</p>
     </div>
   </div>
 </div>
@@ -503,6 +544,15 @@ function showLogin() {
   document.getElementById('register-form').style.display = 'none';
   document.getElementById('login-form').style.display = 'block';
 }
+function togglePasswordField(id, button) {
+  const input = document.getElementById(id);
+  const visible = input.type === 'text';
+  input.type = visible ? 'password' : 'text';
+  button.setAttribute('aria-label', visible ? 'Parolni ko\'rsatish' : 'Parolni yashirish');
+  button.textContent = visible ? '\u{1F441}' : '\u{1F648}';
+}
+function openTerms() { document.getElementById('terms-modal').style.display = 'flex'; }
+function closeTerms() { document.getElementById('terms-modal').style.display = 'none'; }
 function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block'; }
 function hideErr(id) { document.getElementById(id).style.display = 'none'; }
 
@@ -512,9 +562,13 @@ async function doRegister() {
   const password = document.getElementById('reg-password').value;
   const password2 = document.getElementById('reg-password2').value;
   if (password !== password2) { showErr('register-error', "Parollar mos emas"); return; }
+  if (!document.getElementById('terms-accepted').checked) {
+    showErr('register-error', "Ro'yxatdan o'tish uchun Foydalanish shartlarini qabul qiling");
+    return;
+  }
   try {
     await refreshCsrf();
-    const d = await apiJson('/api/register', { method: 'POST', body: JSON.stringify({ username, password }) });
+    const d = await apiJson('/api/register', { method: 'POST', body: JSON.stringify({ username, password, terms_accepted: true }) });
     currentUser = d.username;
     await refreshCsrf();
     await loadCurrentUserId();
@@ -529,6 +583,7 @@ async function doLogin() {
   try {
     await refreshCsrf();
     const d = await apiJson('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    if (d.is_admin) { window.location.href = '/admin'; return; }
     currentUser = d.username;
     await refreshCsrf();
     await loadCurrentUserId();
