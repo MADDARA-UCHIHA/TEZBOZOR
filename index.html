@@ -47,58 +47,70 @@
     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
 
-  /* ===================== GATE / DOOR SCREEN =====================
-     Signature element: an iwan-style arch with two ornamental "curtain"
-     panels (lattice pattern, like majolica tilework) that part on click,
-     revealing a warm marigold glow behind — a bazaar gateway, not a
-     literal door swinging on a hinge. Built entirely with pseudo-elements
-     so no JS/markup changes were needed. */
+  /* ===================== GATE / DOOR SCREEN ===================== */
   #door-screen {
     position: fixed; inset: 0;
-    background: radial-gradient(120% 90% at 50% -10%, #1c3f5c 0%, var(--lapis) 45%, var(--lapis-2) 100%);
+    background:
+      radial-gradient(circle at 50% 42%, rgba(226,166,59,0.14), transparent 25%),
+      radial-gradient(120% 90% at 50% -10%, #254e6a 0%, var(--lapis) 48%, var(--lapis-2) 100%);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 1000; padding: 16px;
+    z-index: 1000; padding: 16px; overflow: hidden;
   }
-  #brand-title { color: var(--plaster); font-size: clamp(24px, 6.5vw, 38px); font-weight: 700; letter-spacing: 2px; margin-bottom: 34px; text-align: center; }
+  #door-screen::before, #door-screen::after {
+    content: ""; position: absolute; border: 1px solid rgba(226,166,59,0.18);
+    border-radius: 50%; pointer-events: none;
+  }
+  #door-screen::before { width: min(680px, 150vw); height: min(680px, 150vw); animation: gate-pulse 5s ease-in-out infinite; }
+  #door-screen::after { width: min(430px, 100vw); height: min(430px, 100vw); animation: gate-pulse 5s 1.2s ease-in-out infinite; }
+  #brand-title { position: relative; z-index: 1; color: var(--plaster); font-size: clamp(24px, 6.5vw, 38px); font-weight: 700; letter-spacing: 3px; margin-bottom: 34px; text-align: center; text-shadow: 0 3px 18px rgba(0,0,0,0.35); }
   #brand-title span { color: var(--marigold); }
 
   #door-frame {
     width: min(300px, 78vw); height: min(430px, 58vh);
-    position: relative; overflow: hidden;
-    border-radius: 130px 130px 10px 10px;
-    box-shadow: 0 0 0 6px rgba(226,166,59,0.18), 0 25px 60px rgba(0,0,0,0.45);
+    position: relative; overflow: hidden; z-index: 1;
+    border: 2px solid rgba(226,166,59,0.7); border-radius: 150px 150px 18px 18px;
+    box-shadow: 0 0 0 8px rgba(226,166,59,0.08), 0 25px 60px rgba(0,0,0,0.5);
     background:
-      radial-gradient(circle at 50% 38%, rgba(226,166,59,0.55) 0%, rgba(226,166,59,0.15) 45%, transparent 70%),
-      linear-gradient(180deg, #23516f, #142f45);
+      radial-gradient(circle at 50% 48%, rgba(23,130,122,0.2) 0%, transparent 42%),
+      linear-gradient(180deg, #163b55, #081b2b);
   }
+  #door-frame::before { content: ""; position: absolute; inset: 12px; border: 1px solid rgba(241,234,217,0.25); border-radius: 138px 138px 10px 10px; pointer-events: none; z-index: 3; }
   #door { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; }
   #door::before, #door::after {
     content: ""; position: absolute; top: 0; bottom: 0; width: 50%;
-    background-color: var(--lapis-2);
+    background-color: #102b40;
     background-image:
-      linear-gradient(45deg, rgba(23,130,122,0.9) 25%, transparent 25%, transparent 75%, rgba(23,130,122,0.9) 75%),
-      linear-gradient(45deg, rgba(23,130,122,0.9) 25%, transparent 25%, transparent 75%, rgba(23,130,122,0.9) 75%);
-    background-size: 34px 34px;
+      linear-gradient(135deg, rgba(23,130,122,0.8) 12%, transparent 12%, transparent 50%, rgba(226,166,59,0.55) 50%, rgba(226,166,59,0.55) 62%, transparent 62%),
+      linear-gradient(45deg, rgba(23,130,122,0.45) 12%, transparent 12%, transparent 50%, rgba(226,166,59,0.35) 50%, rgba(226,166,59,0.35) 62%, transparent 62%);
+    background-size: 42px 42px;
     background-position: 0 0, 17px 17px;
-    transition: transform 1.05s cubic-bezier(.7,0,.2,1);
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.35);
+    transition: transform .72s cubic-bezier(.22,.8,.24,1), filter .72s ease;
     z-index: 1;
   }
-  #door::before { left: 0; border-right: 1px solid rgba(226,166,59,0.4); }
-  #door::after  { right: 0; border-left: 1px solid rgba(226,166,59,0.4); }
-  #door.open::before { transform: translateX(-100%); }
-  #door.open::after  { transform: translateX(100%); }
+  #door::before { left: 0; transform-origin: left center; border-right: 1px solid rgba(226,166,59,0.55); }
+  #door::after  { right: 0; transform-origin: right center; border-left: 1px solid rgba(226,166,59,0.55); }
+  #door.open::before { transform: perspective(900px) rotateY(-88deg); filter: brightness(1.15); }
+  #door.open::after  { transform: perspective(900px) rotateY(88deg); filter: brightness(1.15); }
   #open-label {
     position: relative; z-index: 2;
-    color: var(--plaster); font-size: clamp(22px, 7vw, 34px); font-weight: 700;
-    letter-spacing: 6px; text-transform: uppercase; user-select: none;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    color: var(--plaster); font-size: clamp(20px, 6vw, 30px); font-weight: 700;
+    letter-spacing: 7px; text-transform: uppercase; user-select: none;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.5); transition: opacity .35s, transform .35s;
   }
+  #door:hover #open-label { transform: scale(1.08); }
+  #door.open #open-label { opacity: 0; transform: scale(0.8); }
   #door-handle {
     position: absolute; z-index: 2; right: 22px; top: 50%; transform: translateY(-50%);
-    width: 14px; height: 14px; background: var(--marigold); border-radius: 50%;
-    box-shadow: 0 0 12px rgba(226,166,59,0.9);
+    width: 17px; height: 17px; background: var(--marigold); border: 3px solid #fff0bd; border-radius: 50%;
+    box-shadow: 0 0 0 5px rgba(226,166,59,0.2), 0 0 18px rgba(226,166,59,0.95);
   }
-  #door-hint { color: rgba(241,234,217,0.65); font-size: 13px; margin-top: 26px; text-align: center; letter-spacing: 0.3px; }
+  #door-hint { position: relative; z-index: 1; color: rgba(241,234,217,0.75); font-size: 13px; margin-top: 26px; text-align: center; letter-spacing: 0.5px; animation: hint-float 2.4s ease-in-out infinite; }
+  @keyframes gate-pulse { 0%, 100% { transform: scale(.92); opacity: .25; } 50% { transform: scale(1.04); opacity: .7; } }
+  @keyframes hint-float { 0%, 100% { transform: translateY(0); opacity: .65; } 50% { transform: translateY(-5px); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    #door-screen::before, #door-screen::after, #door-hint { animation: none; }
+  }
 
   /* ===================== AUTH SCREEN ===================== */
   #auth-screen {
@@ -124,11 +136,12 @@
   .auth-box button:active { transform: scale(0.98); }
   .switch-mode { text-align: center; margin-top: 16px; font-size: 13.5px; color: var(--muted); }
   .switch-mode a { color: var(--marigold-dk); cursor: pointer; font-weight: 700; }
-  .error-msg { color: #fff; background: var(--brick); padding: 9px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; text-align: center; display: none; }
+  .error-msg { color: #fff; background: var(--brick); padding: 9px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; text-align: center; display: none; position: relative; z-index: 2; }
   .hint-msg { color: var(--muted); font-size: 12px; margin: -6px 0 12px; }
 
   /* ===================== BOARD / TOPBAR ===================== */
   #board-screen { display: none; }
+  #board-screen { padding-bottom: 88px; }
   header.topbar {
     background: var(--lapis); color: var(--plaster); padding: 14px 16px;
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
@@ -136,20 +149,43 @@
   }
   header.topbar .logo { font-size: 21px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
   header.topbar .logo span { color: var(--marigold); }
-  header.topbar .user-info { display: flex; align-items: center; gap: 10px; font-size: 13px; min-width: 0; }
-  header.topbar .user-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34vw; color: rgba(241,234,217,0.85); }
-  header.topbar button.logout {
-    background: rgba(226,166,59,0.15); color: var(--marigold); border: 1px solid rgba(226,166,59,0.5);
-    padding: 7px 13px; border-radius: 8px; font-size: 13px; font-weight: 600; flex-shrink: 0;
-    transition: background .15s;
-  }
-  header.topbar button.logout:hover { background: rgba(226,166,59,0.28); }
 
   .search-bar { background: var(--card); padding: 12px 16px; display: flex; gap: 10px; box-shadow: var(--shadow-sm); }
   .search-bar input {
     flex: 1; min-width: 0; padding: 11px 14px; border: 1.5px solid var(--line);
     border-radius: 10px; font-size: 15px; background: #fffcf6; transition: border-color .15s;
   }
+  #bottom-nav { display: none; }
+  .bottom-nav {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    width: min(560px, calc(100% - 24px)); padding: 8px 10px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    background: rgba(255,253,248,0.94); border: 1px solid rgba(226,214,186,0.9);
+    border-radius: 22px; box-shadow: 0 12px 35px rgba(23,50,74,0.2);
+    backdrop-filter: blur(14px); z-index: 100;
+  }
+  .nav-item {
+    border: 0; background: transparent; color: var(--muted); border-radius: 14px;
+    padding: 7px 3px 5px; display: flex; flex-direction: column; align-items: center;
+    gap: 2px; font-size: 10px; font-weight: 700; transition: .15s;
+  }
+  .nav-item:hover, .nav-item.active { color: var(--teal); background: rgba(23,130,122,.09); }
+  .nav-icon { font-size: 21px; line-height: 1; }
+  .nav-add { color: #fff; background: var(--teal); margin-top: -23px; border: 5px solid var(--plaster); border-radius: 50%; width: 58px; height: 58px; justify-self: center; box-shadow: 0 5px 14px rgba(23,130,122,.35); }
+  .nav-add:hover { color: #fff; background: var(--teal-dark); transform: translateY(-2px); }
+  .account-modal-card { padding: 24px; background: var(--plaster); }
+  .account-avatar { width: 62px; height: 62px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; background: var(--teal); color: #fff; font-size: 26px; font-weight: 800; }
+  .account-name { text-align: center; font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+  .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .settings-row input { accent-color: var(--teal); width: 18px; height: 18px; }
+  .account-action { width: 100%; margin-top: 18px; padding: 12px; border: 0; border-radius: 10px; background: var(--brick); color: #fff; font-weight: 700; }
+  .detail-body { padding: 18px; overflow-y: auto; background: var(--plaster); }
+  .detail-images { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 14px; }
+  .detail-images img { width: 220px; height: 170px; flex: 0 0 auto; object-fit: cover; border-radius: 12px; }
+  .related-title { margin-top: 22px; font-weight: 800; color: var(--lapis); }
+  .related-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+  .related-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px; cursor: pointer; }
+  .related-card img { width: 100%; height: 90px; object-fit: cover; border-radius: 7px; }
   .search-bar input:focus { border-color: var(--teal); outline: none; }
 
   .container { max-width: 1000px; margin: 0 auto; padding: 16px; }
@@ -161,6 +197,9 @@
   }
   .add-ad-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
   .add-ad-form { display: none; background: var(--card); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--line); }
+  .add-ad-form.form-open { position: fixed; inset: 7vh 16px auto; z-index: 160; max-height: 86vh; overflow-y: auto; margin: 0 auto; width: min(520px, calc(100% - 32px)); }
+  .form-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: var(--lapis); font-size: 18px; }
+  .form-heading button { border: 0; background: transparent; color: var(--muted); font-size: 24px; }
   .add-ad-form label {
     font-size: 11.5px; color: var(--teal-dark); display: block; margin-bottom: 5px; margin-top: 10px;
     text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700;
@@ -191,6 +230,7 @@
     transition: transform .15s, box-shadow .15s;
   }
   .ad-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .ad-card { cursor: pointer; }
   .ad-card::before {
     content: ""; display: block; height: 4px; flex-shrink: 0;
     background: repeating-linear-gradient(90deg, var(--teal) 0 10px, var(--marigold) 10px 20px);
@@ -211,8 +251,6 @@
     border: 1.5px solid var(--line); background: var(--plaster); font-weight: 600; color: var(--ink);
     transition: background .12s, border-color .12s;
   }
-  .ad-actions .call-btn { background: rgba(23,50,74,0.06); border-color: var(--lapis); color: var(--lapis); }
-  .ad-actions .call-btn:hover { background: rgba(23,50,74,0.12); }
   .ad-actions .chat-btn { background: rgba(23,130,122,0.08); border-color: var(--teal); color: var(--teal-dark); }
   .ad-actions .chat-btn:hover { background: rgba(23,130,122,0.16); }
   .ad-actions .del-btn { background: rgba(184,84,58,0.08); border-color: var(--brick); color: var(--brick); }
@@ -252,17 +290,20 @@
   .chat-input-row button { background: var(--teal); color: #fff; border: none; padding: 11px 18px; border-radius: 9px; font-weight: 700; flex-shrink: 0; }
   .chat-input-row button:hover { background: var(--teal-dark); }
 
-  .call-modal-body { padding: 38px 20px; text-align: center; background: var(--plaster); }
-  .call-icon {
-    font-size: 34px; margin: 0 auto 14px; width: 64px; height: 64px; border-radius: 50%;
-    background: rgba(226,166,59,0.2); display: flex; align-items: center; justify-content: center;
-  }
-  #call-status { font-weight: 600; color: var(--ink); }
-  .call-note { font-size: 12px; color: var(--muted); margin-top: 16px; line-height: 1.5; }
 
   @media (min-width: 600px) {
     .modal-overlay { align-items: center; }
     .modal-box { border-radius: 18px; }
+  }
+  @media (max-width: 420px) {
+    header.topbar { padding: 12px 14px; }
+    header.topbar .logo { font-size: 19px; }
+    .search-bar { padding: 10px 12px; }
+    .container { padding: 12px; }
+    .bottom-nav { bottom: 8px; width: calc(100% - 16px); padding: 7px 5px; }
+    .nav-item { font-size: 9px; }
+    .nav-icon { font-size: 19px; }
+    .nav-add { width: 54px; height: 54px; }
   }
 </style>
 </head>
@@ -295,7 +336,7 @@
       <div class="error-msg" id="register-error"></div>
       <input type="text" id="reg-username" placeholder="Foydalanuvchi nomi" autocomplete="username">
       <div class="hint-msg">3-20 belgi: harf, raqam, pastki chiziq</div>
-      <input type="password" id="reg-password" placeholder="Parol (kamida 6 belgi)" autocomplete="new-password">
+      <input type="password" id="reg-password" placeholder="Parol (kamida 8 belgi, harf va raqam)" autocomplete="new-password">
       <input type="password" id="reg-password2" placeholder="Parolni tasdiqlang" autocomplete="new-password">
       <button onclick="doRegister()">Ro'yxatdan o'tish</button>
       <div class="switch-mode">Akkountingiz bormi? <a onclick="showLogin()">Kirish</a></div>
@@ -306,18 +347,15 @@
 <div id="board-screen">
   <header class="topbar">
     <div class="logo">TEZ<span>BOZOR</span></div>
-    <div class="user-info">
-      <span id="welcome-user"></span>
-      <button class="logout" onclick="logout()">Chiqish</button>
-    </div>
   </header>
   <div class="search-bar">
-    <input type="text" id="search-input" placeholder="E'lonlarni qidirish..." oninput="loadAds()">
+    <input type="search" id="search-input" list="search-history" placeholder="E'lonlarni qidirish..." oninput="handleSearchInput()" onkeydown="if(event.key==='Enter') saveSearchQuery()">
+    <datalist id="search-history"></datalist>
   </div>
   <div class="container">
-    <button class="add-ad-btn" onclick="toggleAddForm()">+ E'lon joylashtirish</button>
-    <div class="error-msg" id="ad-error"></div>
     <form class="add-ad-form" id="add-ad-form" onsubmit="return false;">
+      <div class="form-heading"><strong>Yangi e'lon</strong><button type="button" onclick="closeNewAd()">&times;</button></div>
+      <div class="error-msg" id="ad-error"></div>
       <label>Sarlavha</label>
       <input type="text" id="ad-title" placeholder="Masalan: iPhone 13 Pro" maxlength="100">
 
@@ -328,13 +366,13 @@
       <textarea id="ad-desc" rows="3" placeholder="Holati, xususiyatlari va h.k." maxlength="1000"></textarea>
 
       <label>Telefon raqami</label>
-      <input type="tel" id="ad-phone" placeholder="+998901234567" maxlength="20">
+      <input type="tel" id="ad-phone" value="+998 " placeholder="+998 (90) 902-04-06" maxlength="19" required>
 
-      <label>Rasm</label>
+      <label>Rasmlar (1 ta majburiy, ko'pi bilan 4 ta)</label>
       <div class="img-picker">
         <label class="img-picker-btn" for="ad-image">Rasm tanlash</label>
-        <input type="file" id="ad-image" accept="image/*" style="display:none" onchange="previewImage()">
-        <img id="img-preview" alt="preview">
+        <input type="file" id="ad-image" accept="image/*" multiple required style="display:none" onchange="previewImage()">
+        <div id="img-previews"></div>
       </div>
 
       <button type="button" class="submit-btn" onclick="addAd()">Joylashtirish</button>
@@ -354,6 +392,53 @@
   <div id="channel-ads-grid"></div>
 </div>
 
+<nav class="bottom-nav" id="bottom-nav" aria-label="Asosiy navigatsiya">
+  <button class="nav-item active" onclick="goHome()"><span class="nav-icon">⌂</span><span>Bosh sahifa</span></button>
+  <button class="nav-item nav-add" onclick="openNewAd()"><span class="nav-icon">+</span><span>E'lon</span></button>
+  <button class="nav-item" onclick="openAccount()"><span class="nav-icon">◉</span><span>Account</span></button>
+  <button class="nav-item" onclick="openSettings()"><span class="nav-icon">⚙</span><span>Sozlamalar</span></button>
+</nav>
+
+<div class="modal-overlay" id="ad-detail-modal">
+  <div class="modal-box">
+    <div class="modal-header"><span id="detail-title">E'lon</span><button onclick="closeAdDetails()">&times;</button></div>
+    <div class="detail-body">
+      <div class="detail-images" id="detail-images"></div>
+      <div class="ad-price" id="detail-price"></div>
+      <h2 id="detail-heading" style="margin:8px 0;font-size:20px;"></h2>
+      <p id="detail-description" class="ad-meta" style="font-size:13px;line-height:1.5;"></p>
+      <p id="detail-seller" class="ad-meta"></p>
+      <div class="ad-actions"><button class="chat-btn" id="detail-chat-btn">💬 Chat</button></div>
+      <div class="related-title">O'xshash mahsulotlar</div>
+      <div class="related-grid" id="related-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="account-modal">
+  <div class="modal-box">
+    <div class="modal-header"><span>Account</span><button onclick="closeAccount()">&times;</button></div>
+    <div class="account-modal-card">
+      <div class="account-avatar" id="account-avatar"></div>
+      <div class="account-name" id="account-name"></div>
+      <label class="img-picker-btn" for="avatar-file">Account rasmini o'zgartirish</label>
+      <input type="file" id="avatar-file" accept="image/*" style="display:none" onchange="changeAvatar()">
+      <button class="account-action" onclick="logout()">Chiqish</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal-box">
+    <div class="modal-header"><span>Account sozlamalari</span><button onclick="closeSettings()">&times;</button></div>
+    <div class="account-modal-card">
+      <div class="settings-row"><span>Bildirishnomalar</span><input type="checkbox" id="notifications-setting" checked></div>
+      <div class="settings-row"><span>Avtomatik yangilash</span><input type="checkbox" id="refresh-setting" checked></div>
+      <div class="settings-row"><span>Profil</span><strong id="settings-username"></strong></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="chat-modal">
   <div class="modal-box">
     <div class="modal-header">
@@ -368,27 +453,14 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="call-modal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <span>Qo'ng'iroq</span>
-      <button onclick="closeCall()">&times;</button>
-    </div>
-    <div class="call-modal-body">
-      <div class="call-icon">☎</div>
-      <div id="call-status">Chaqirilmoqda...</div>
-      <div id="call-phone" style="font-weight:700; margin-top:8px; font-size:16px;"></div>
-      <div class="call-note">Bu demo qo'ng'iroq signali — real ovozli aloqa uchun WebRTC serveri kerak bo'ladi. Ko'rsatilgan raqamga to'g'ridan-to'g'ri qo'ng'iroq qilishingiz mumkin.</div>
-    </div>
-  </div>
-</div>
-
 <script>
 let csrfToken = '';
 let currentUser = null;
 let currentUserId = null;
+let currentUserAvatar = null;
+let adsCache = [];
 let activeAdId = null;
-let selectedImageFile = null;
+let selectedImageFiles = [];
 
 async function apiJson(path, opts = {}) {
   opts.headers = opts.headers || {};
@@ -420,7 +492,7 @@ function openDoor() {
   setTimeout(() => {
     document.getElementById('door-screen').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
-  }, 900);
+  }, 780);
 }
 
 function showRegister() {
@@ -467,13 +539,20 @@ async function doLogin() {
 async function loadCurrentUserId() {
   const d = await apiJson('/api/me');
   currentUserId = d.user ? d.user.id : null;
+  currentUserAvatar = d.user ? d.user.avatar_filename : null;
 }
 
 async function logout() {
   await apiJson('/api/logout', { method: 'POST' });
   currentUser = null;
+  currentUserId = null;
+  currentUserAvatar = null;
+  closeAccount();
+  closeSettings();
+  closeNewAd();
   await refreshCsrf();
   document.getElementById('board-screen').style.display = 'none';
+  document.getElementById('bottom-nav').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
   showLogin();
 }
@@ -481,7 +560,7 @@ async function logout() {
 function enterBoard() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('board-screen').style.display = 'block';
-  document.getElementById('welcome-user').textContent = 'Salom, ' + currentUser;
+  document.getElementById('bottom-nav').style.display = 'grid';
   loadAds();
 }
 
@@ -490,16 +569,112 @@ function toggleAddForm() {
   f.style.display = f.style.display === 'block' ? 'none' : 'block';
 }
 
+function goHome() {
+  document.getElementById('channel-screen').style.display = 'none';
+  document.getElementById('board-screen').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  loadAds();
+}
+function focusSearch() {
+  goHome();
+  const input = document.getElementById('search-input');
+  input.focus();
+  input.select();
+}
+function loadSearchHistory() {
+  const history = JSON.parse(localStorage.getItem('tezbozor-search-history') || '[]');
+  document.getElementById('search-history').innerHTML = history
+    .map(item => `<option value="${escapeHtml(item)}"></option>`).join('');
+}
+function handleSearchInput() {
+  loadAds();
+}
+function saveSearchQuery() {
+  const query = document.getElementById('search-input').value.trim();
+  if (!query) return;
+  const history = JSON.parse(localStorage.getItem('tezbozor-search-history') || '[]')
+    .filter(item => item !== query);
+  history.unshift(query);
+  localStorage.setItem('tezbozor-search-history', JSON.stringify(history.slice(0, 10)));
+  loadSearchHistory();
+}
+function openNewAd() {
+  goHome();
+  const form = document.getElementById('add-ad-form');
+  form.style.display = 'block';
+  form.classList.add('form-open');
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  document.getElementById('ad-title').focus();
+}
+function closeNewAd() {
+  const form = document.getElementById('add-ad-form');
+  form.style.display = 'none';
+  form.classList.remove('form-open');
+}
+function openAccount() {
+  const avatar = document.getElementById('account-avatar');
+  avatar.textContent = (currentUser || '?').charAt(0).toUpperCase();
+  avatar.style.backgroundImage = currentUserAvatar ? `url('/uploads/${encodeURIComponent(currentUserAvatar)}')` : '';
+  avatar.style.backgroundSize = 'cover';
+  document.getElementById('account-name').textContent = currentUser || 'Account';
+  document.getElementById('account-modal').style.display = 'flex';
+}
+async function changeAvatar() {
+  const file = document.getElementById('avatar-file').files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('avatar', file);
+  try {
+    const d = await apiForm('/api/profile/avatar', fd);
+    currentUserAvatar = d.avatar_filename;
+    openAccount();
+  } catch (e) { alert(e.message); }
+}
+function closeAccount() { document.getElementById('account-modal').style.display = 'none'; }
+function openSettings() {
+  document.getElementById('settings-username').textContent = currentUser || '';
+  document.getElementById('settings-modal').style.display = 'flex';
+}
+function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+
 function previewImage() {
   const input = document.getElementById('ad-image');
-  const preview = document.getElementById('img-preview');
-  const file = input.files[0];
-  if (!file) { preview.style.display = 'none'; selectedImageFile = null; return; }
-  selectedImageFile = file;
-  const reader = new FileReader();
-  reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
-  reader.readAsDataURL(file);
+  const previewBox = document.getElementById('img-previews');
+  selectedImageFiles = Array.from(input.files);
+  previewBox.innerHTML = '';
+  if (selectedImageFiles.length > 4) {
+    showErr('ad-error', "Ko'pi bilan 4 ta rasm tanlang");
+    selectedImageFiles = [];
+    input.value = '';
+    return;
+  }
+  selectedImageFiles.forEach(file => {
+    const preview = document.createElement('img');
+    preview.alt = 'preview';
+    preview.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:9px;border:1.5px solid var(--line);margin:4px;';
+    const reader = new FileReader();
+    reader.onload = e => { preview.src = e.target.result; };
+    reader.readAsDataURL(file);
+    previewBox.appendChild(preview);
+  });
 }
+
+function formatPhone(value) {
+  let digits = value.replace(/\D/g, '');
+  if (digits.startsWith('998')) digits = digits.slice(3);
+  digits = digits.slice(0, 9);
+  let result = '+998';
+  if (digits.length) result += ' (' + digits.slice(0, 2);
+  if (digits.length >= 2) result += ')';
+  if (digits.length > 2) result += digits.slice(2, 5);
+  if (digits.length > 5) result += '-' + digits.slice(5, 7);
+  if (digits.length > 7) result += '-' + digits.slice(7, 9);
+  return result + (digits.length ? '' : ' ');
+}
+
+document.getElementById('ad-phone').addEventListener('input', event => {
+  event.target.value = formatPhone(event.target.value);
+});
 
 async function addAd() {
   hideErr('ad-error');
@@ -507,24 +682,32 @@ async function addAd() {
   const price = document.getElementById('ad-price').value.trim();
   const description = document.getElementById('ad-desc').value.trim();
   const phone = document.getElementById('ad-phone').value.trim();
+  if (!/^(\+998|998)\D*\d{2}\D*\d{3}\D*\d{2}\D*\d{2}$/.test(phone)) {
+    showErr('ad-error', "Telefon raqami majburiy (masalan: +998 (90) 902-04-06)");
+    return;
+  }
+  if (selectedImageFiles.length < 1 || selectedImageFiles.length > 4) {
+    showErr('ad-error', "Kamida 1 ta va ko'pi bilan 4 ta rasm tanlang");
+    return;
+  }
 
   const fd = new FormData();
   fd.append('title', title);
   fd.append('price', price);
   fd.append('description', description);
   fd.append('phone', phone);
-  if (selectedImageFile) fd.append('image', selectedImageFile);
+  selectedImageFiles.forEach(file => fd.append('images', file));
 
   try {
     await apiForm('/api/ads', fd);
     document.getElementById('ad-title').value = '';
     document.getElementById('ad-price').value = '';
     document.getElementById('ad-desc').value = '';
-    document.getElementById('ad-phone').value = '';
+    document.getElementById('ad-phone').value = '+998 ';
     document.getElementById('ad-image').value = '';
-    document.getElementById('img-preview').style.display = 'none';
-    selectedImageFile = null;
-    document.getElementById('add-ad-form').style.display = 'none';
+    document.getElementById('img-previews').innerHTML = '';
+    selectedImageFiles = [];
+    closeNewAd();
     loadAds();
   } catch (e) { showErr('ad-error', e.message); }
 }
@@ -535,13 +718,15 @@ async function deleteAd(id) {
 }
 
 async function loadAds() {
-  const q = document.getElementById('search-input').value.trim();
-  const d = await apiJson('/api/ads?q=' + encodeURIComponent(q));
   const grid = document.getElementById('ads-grid');
-  if (d.ads.length === 0) { grid.innerHTML = '<div class="empty-state">E\'lonlar topilmadi</div>'; return; }
-  grid.innerHTML = d.ads.map(a => `
-    <div class="ad-card">
-      <div class="ad-img">${a.image_filename ? `<img src="/uploads/${encodeURIComponent(a.image_filename)}" alt="">` : "Rasm yo'q"}</div>
+  try {
+    const q = document.getElementById('search-input').value.trim();
+    const d = await apiJson('/api/ads?q=' + encodeURIComponent(q));
+    adsCache = d.ads;
+    if (d.ads.length === 0) { grid.innerHTML = '<div class="empty-state">E\'lonlar topilmadi</div>'; return; }
+    grid.innerHTML = d.ads.map(a => `
+    <div class="ad-card" onclick="openAdDetails(${a.id})">
+      <div class="ad-img">${(a.image_filenames || []).map(name => `<img src="/uploads/${encodeURIComponent(name)}" alt="">`).join('') || "Rasm yo'q"}</div>
       <div class="ad-body">
         <div class="ad-price">${escapeHtml(a.price)} so'm</div>
         <div class="ad-title">${escapeHtml(a.title)}</div>
@@ -549,19 +734,39 @@ async function loadAds() {
         ${a.phone ? `<div class="ad-meta">📞 ${escapeHtml(a.phone)}</div>` : ''}
         <div class="ad-meta">E'lon beruvchi: <span class="seller-link" onclick="openChannel('${escapeJs(a.author)}')">${escapeHtml(a.author)}</span></div>
         <div class="ad-actions">
-          <button class="chat-btn" onclick="openChat(${a.id}, '${escapeJs(a.title)}', ${a.author_id})">💬 Chat</button>
-          <button class="call-btn" onclick="openCall(${a.id}, '${escapeJs(a.phone || '')}')">📞 Qo'ng'iroq</button>
-          ${a.author === currentUser ? `<button class="del-btn" onclick="deleteAd(${a.id})">🗑 O'chirish</button>` : ''}
+          <button class="chat-btn" onclick="event.stopPropagation(); openChat(${a.id}, '${escapeJs(a.title)}', ${a.author_id})">💬 Chat</button>
+          ${a.author === currentUser ? `<button class="del-btn" onclick="event.stopPropagation(); deleteAd(${a.id})">🗑 O'chirish</button>` : ''}
         </div>
       </div>
     </div>
-  `).join('');
+    `).join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="empty-state">${escapeHtml(e.message)}</div>`;
+  }
 }
 
 function escapeHtml(s) {
   return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-function escapeJs(s) { return (s || '').replace(/'/g, "\\'"); }
+async function openAdDetails(id) {
+  const ad = adsCache.find(item => item.id === id);
+  if (!ad) return;
+  document.getElementById('detail-title').textContent = ad.title;
+  document.getElementById('detail-heading').textContent = ad.title;
+  document.getElementById('detail-price').textContent = ad.price + " so'm";
+  document.getElementById('detail-description').textContent = ad.description || 'Tavsif berilmagan';
+  document.getElementById('detail-seller').textContent = "E'lon beruvchi: " + (ad.author || '');
+  document.getElementById('detail-images').innerHTML = (ad.image_filenames || []).map(name => `<img src="/uploads/${encodeURIComponent(name)}" alt="">`).join('');
+  document.getElementById('detail-chat-btn').onclick = () => { closeAdDetails(); openChat(ad.id, ad.title, ad.author_id); };
+  document.getElementById('ad-detail-modal').style.display = 'flex';
+  const related = await apiJson('/api/ads/' + id + '/related');
+  document.getElementById('related-grid').innerHTML = related.ads.map(item => `<div class="related-card"><div>${escapeHtml(item.title)}</div><strong>${escapeHtml(item.price)} so'm</strong></div>`).join('') || '<div class="ad-meta">O\'xshash mahsulot topilmadi</div>';
+}
+function closeAdDetails() { document.getElementById('ad-detail-modal').style.display = 'none'; }
+function escapeJs(s) {
+  return (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+    .replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/\u2028|\u2029/g, '');
+}
 
 let chatPollTimer = null;
 let activeChatWith = null;   // the other participant's user id, from the current viewer's perspective
@@ -646,21 +851,6 @@ async function sendMessage() {
   } catch (e) { alert(e.message); }
 }
 
-async function openCall(adId, phone) {
-  document.getElementById('call-modal').style.display = 'flex';
-  document.getElementById('call-status').textContent = 'Chaqirilmoqda...';
-  document.getElementById('call-phone').textContent = phone || '';
-  try {
-    const d = await apiJson('/api/call/' + adId, { method: 'POST' });
-    document.getElementById('call-phone').textContent = d.phone || phone || '';
-    setTimeout(() => { document.getElementById('call-status').textContent = "Qo'ng'iroq qayd etildi"; }, 800);
-  } catch (e) {
-    document.getElementById('call-status').textContent = e.message;
-    document.getElementById('call-phone').textContent = '';
-  }
-}
-function closeCall() { document.getElementById('call-modal').style.display = 'none'; }
-
 async function openChannel(username) {
   try {
     const d = await apiJson('/api/channel/' + encodeURIComponent(username));
@@ -673,7 +863,7 @@ async function openChannel(username) {
     } else {
       grid.innerHTML = d.ads.map(a => `
         <div class="ad-card">
-          <div class="ad-img">${a.image_filename ? `<img src="/uploads/${encodeURIComponent(a.image_filename)}" alt="">` : "Rasm yo'q"}</div>
+          <div class="ad-img">${(a.image_filenames || []).map(name => `<img src="/uploads/${encodeURIComponent(name)}" alt="">`).join('') || "Rasm yo'q"}</div>
           <div class="ad-body">
             <div class="ad-price">${escapeHtml(a.price)} so'm</div>
             <div class="ad-title">${escapeHtml(a.title)}</div>
@@ -681,7 +871,6 @@ async function openChannel(username) {
             ${a.phone ? `<div class="ad-meta">📞 ${escapeHtml(a.phone)}</div>` : ''}
             <div class="ad-actions">
               <button class="chat-btn" onclick="openChat(${a.id}, '${escapeJs(a.title)}', ${d.seller.id})">💬 Chat</button>
-              <button class="call-btn" onclick="openCall(${a.id}, '${escapeJs(a.phone || '')}')">📞 Qo'ng'iroq</button>
             </div>
           </div>
         </div>
@@ -698,6 +887,7 @@ function closeChannel() {
 }
 
 (async function init() {
+  loadSearchHistory();
   await refreshCsrf();
   const d = await apiJson('/api/me');
   if (d.user) {

@@ -3,12 +3,15 @@ import os
 import re
 import time
 import uuid
+import json
 import logging
-from datetime import datetime
+from contextlib import suppress
+from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, g, request, session, jsonify, render_template, redirect, url_for, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import RequestEntityTooLarge
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import generate_csrf
 from PIL import Image
@@ -60,7 +63,10 @@ if not _secret_key:
     )
 app.config["SECRET_KEY"] = _secret_key
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SAMESITE"] = "Strict"
+app.config["SESSION_PERMANENT"] = True
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=12)
+app.config["SESSION_COOKIE_NAME"] = "tezbozor_session"
 # Set SECURE_COOKIES=1 in the environment once the site is served over HTTPS in production
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SECURE_COOKIES") == "1"
 app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024  # 6MB max request body (form + image)
@@ -105,6 +111,11 @@ def handle_csrf_error(e):
                      "code": "csrf_expired"}), 400
 
 
+@app.errorhandler(RequestEntityTooLarge)
+def handle_request_too_large(e):
+    return jsonify({"error": "Yuklangan ma'lumot hajmi 6MB dan oshmasligi kerak"}), 413
+
+
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXT
 
@@ -127,13 +138,23 @@ def verify_and_resave_image(file_storage, dest_path):
         return False, "Fayl haqiqiy rasm emas yoki buzilgan"
 
 
-PHONE_RE = re.compile(r"^\+?[0-9]{7,15}$")
+PHONE_RE = re.compile(r"^998[0-9]{9}$")
+MAX_AD_IMAGES = 4
 
 
 def valid_phone(p):
-    if not p:
-        return True  # optional field
-    return bool(PHONE_RE.match(p.strip()))
+    digits = re.sub(r"\D", "", p or "")
+    return bool(PHONE_RE.match(digits))
+
+
+def ad_image_names(ad_id, legacy_filename=None):
+    rows = get_db().execute(
+        "SELECT filename FROM ad_images WHERE ad_id = ? ORDER BY id", (ad_id,)
+    ).fetchall()
+    names = [row["filename"] for row in rows]
+    if not names and legacy_filename:
+        names.append(legacy_filename)
+    return names
 
 
 # ---------- rate limiting (simple in-memory, per-IP / per-user) ----------
@@ -188,6 +209,17 @@ def clear_attempts(ip):
     LOGIN_ATTEMPTS.pop(ip, None)
 
 
+def rate_limited_redis(key, max_calls, window_seconds, now):
+    rkey = f"ratelimit:{key}"
+    redis_client.zremrangebyscore(rkey, 0, now - window_seconds)
+    count = redis_client.zcard(rkey)
+    if count >= max_calls:
+        return True
+    redis_client.zadd(rkey, {f"{now}:{uuid.uuid4().hex}": now})
+    redis_client.expire(rkey, int(window_seconds) + 1)
+    return False
+
+
 def rate_limited(key, max_calls, window_seconds):
     """Generic sliding-window rate limiter. Returns True if the caller should be blocked.
     Uses a Redis sorted set (shared across worker processes) when available, otherwise
@@ -195,14 +227,7 @@ def rate_limited(key, max_calls, window_seconds):
     now = time.time()
     if redis_client:
         try:
-            rkey = f"ratelimit:{key}"
-            redis_client.zremrangebyscore(rkey, 0, now - window_seconds)
-            count = redis_client.zcard(rkey)
-            if count >= max_calls:
-                return True
-            redis_client.zadd(rkey, {f"{now}:{uuid.uuid4().hex}": now})
-            redis_client.expire(rkey, int(window_seconds) + 1)
-            return False
+            return rate_limited_redis(key, max_calls, window_seconds, now)
         except Exception:
             logger.exception("Redis error in rate_limited; falling back to in-memory")
     history = [t for t in ACTION_LOG.get(key, []) if now - t < window_seconds]
@@ -261,6 +286,12 @@ def init_db():
             created_at TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id INTEGER PRIMARY KEY,
+            avatar_filename TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS ads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -271,6 +302,13 @@ def init_db():
             image_filename TEXT,
             created_at TEXT NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS ad_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ad_id INTEGER NOT NULL,
+            filename TEXT NOT NULL,
+            FOREIGN KEY(ad_id) REFERENCES ads(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS messages (
@@ -291,6 +329,29 @@ def init_db():
             caller_id INTEGER NOT NULL,
             callee_id INTEGER NOT NULL,
             created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS webrtc_calls (
+            call_id TEXT PRIMARY KEY,
+            ad_id INTEGER NOT NULL,
+            caller_id INTEGER NOT NULL,
+            callee_id INTEGER NOT NULL,
+            offer TEXT,
+            answer TEXT,
+            status TEXT NOT NULL DEFAULT 'ringing',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(ad_id) REFERENCES ads(id) ON DELETE CASCADE,
+            FOREIGN KEY(caller_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(callee_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS webrtc_candidates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            call_id TEXT NOT NULL,
+            sender_id INTEGER NOT NULL,
+            candidate TEXT NOT NULL,
+            FOREIGN KEY(call_id) REFERENCES webrtc_calls(call_id) ON DELETE CASCADE,
+            FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
         );
         """
     )
@@ -320,6 +381,13 @@ def current_user():
         return None
     db = get_db()
     return db.execute("SELECT id, username FROM users WHERE id = ?", (uid,)).fetchone()
+
+
+def current_avatar_filename(user_id):
+    row = get_db().execute(
+        "SELECT avatar_filename FROM user_profiles WHERE user_id = ?", (user_id,)
+    ).fetchone()
+    return row["avatar_filename"] if row else None
 
 
 def login_required(fn):
@@ -355,12 +423,11 @@ def api_register():
 
     if not valid_username(username):
         return jsonify({"error": "Foydalanuvchi nomi harf bilan boshlanib, 3-20 belgidan iborat bo'lishi kerak (harf, raqam, _)"}), 400
-    if not valid_password(password):
+    if not (password_is_valid := valid_password(password)):
         return jsonify({"error": "Parol kamida 8 belgidan iborat bo'lib, harf va raqamni o'z ichiga olishi kerak"}), 400
 
     db = get_db()
-    exists = db.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
-    if exists:
+    if db.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone():
         return jsonify({"error": "Bu foydalanuvchi nomi allaqachon band"}), 409
 
     pw_hash = generate_password_hash(password)
@@ -372,6 +439,7 @@ def api_register():
     user = db.execute("SELECT id, username FROM users WHERE username = ?", (username,)).fetchone()
 
     session.clear()
+    session.permanent = True
     session["user_id"] = user["id"]
     session["username"] = user["username"]
     return jsonify({"ok": True, "username": user["username"]})
@@ -396,6 +464,7 @@ def api_login():
 
     clear_attempts(ip)
     session.clear()
+    session.permanent = True
     session["user_id"] = user["id"]
     session["username"] = user["username"]
     return jsonify({"ok": True, "username": user["username"]})
@@ -409,10 +478,39 @@ def api_logout():
 
 @app.route("/api/me")
 def api_me():
-    user = current_user()
-    if not user:
-        return jsonify({"user": None})
-    return jsonify({"user": {"id": user["id"], "username": user["username"]}})
+    if user := current_user():
+        return jsonify({"user": {"id": user["id"], "username": user["username"],
+                                 "avatar_filename": current_avatar_filename(user["id"])}})
+    return jsonify({"user": None})
+
+
+@app.route("/api/profile/avatar", methods=["POST"])
+@login_required
+def api_profile_avatar():
+    file = request.files.get("avatar")
+    if not file or not file.filename:
+        return jsonify({"error": "Profil rasmi tanlanmagan"}), 400
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Faqat rasm fayllari ruxsat etilgan"}), 400
+    file.seek(0, os.SEEK_END)
+    if file.tell() > MAX_IMAGE_BYTES:
+        return jsonify({"error": "Rasm hajmi 4MB dan oshmasligi kerak"}), 400
+    file.seek(0)
+    filename = f"avatar-{uuid.uuid4().hex}.{file.filename.rsplit('.', 1)[1].lower()}"
+    path = os.path.join(UPLOAD_DIR, filename)
+    file.save(path)
+    db = get_db()
+    old = current_avatar_filename(session["user_id"])
+    db.execute(
+        """INSERT INTO user_profiles (user_id, avatar_filename) VALUES (?, ?)
+           ON CONFLICT(user_id) DO UPDATE SET avatar_filename = excluded.avatar_filename""",
+        (session["user_id"], filename),
+    )
+    db.commit()
+    if old:
+        with suppress(OSError):
+            os.remove(os.path.join(UPLOAD_DIR, old))
+    return jsonify({"ok": True, "avatar_filename": filename})
 
 
 # ---------- ads endpoints ----------
@@ -427,9 +525,14 @@ def api_channel(username):
            FROM ads WHERE user_id = ? ORDER BY id DESC""",
         (seller["id"],),
     ).fetchall()
+    ads = []
+    for row in rows:
+        item = dict(row)
+        item["image_filenames"] = ad_image_names(row["id"], row["image_filename"])
+        ads.append(item)
     return jsonify({
         "seller": {"id": seller["id"], "username": seller["username"], "joined": seller["created_at"]},
-        "ads": [dict(r) for r in rows],
+        "ads": ads,
         "ads_count": len(rows),
     })
 
@@ -460,7 +563,30 @@ def api_list_ads():
                ORDER BY ads.id DESC LIMIT ? OFFSET ?""",
             (limit, offset),
         ).fetchall()
-    return jsonify({"ads": [dict(r) for r in rows], "limit": limit, "offset": offset})
+    ads = []
+    for row in rows:
+        item = dict(row)
+        item["image_filenames"] = ad_image_names(row["id"], row["image_filename"])
+        ads.append(item)
+    return jsonify({"ads": ads, "limit": limit, "offset": offset})
+
+
+@app.route("/api/ads/<int:ad_id>/related", methods=["GET"])
+def api_related_ads(ad_id):
+    db = get_db()
+    ad = db.execute("SELECT id, title FROM ads WHERE id = ?", (ad_id,)).fetchone()
+    if not ad:
+        return jsonify({"error": "E'lon topilmadi"}), 404
+    keyword = (ad["title"] or "").split()[0].strip()
+    rows = db.execute(
+        """SELECT ads.id, ads.title, ads.price, ads.description, ads.phone,
+                  ads.image_filename, users.username AS author
+           FROM ads JOIN users ON ads.user_id = users.id
+           WHERE ads.id != ? AND ads.title LIKE ?
+           ORDER BY ads.id DESC LIMIT 6""",
+        (ad_id, f"%{keyword}%"),
+    ).fetchall()
+    return jsonify({"ads": [dict(row) for row in rows]})
 
 
 @app.route("/api/ads", methods=["POST"])
@@ -480,33 +606,47 @@ def api_create_ad():
     if len(description) > 1000:
         return jsonify({"error": "Tavsif juda uzun"}), 400
     if not valid_phone(phone):
-        return jsonify({"error": "Telefon raqami noto'g'ri (masalan: +998901234567)"}), 400
+        return jsonify({"error": "Telefon raqami majburiy va noto'g'ri (masalan: +998 (90) 902-04-06)"}), 400
 
-    image_filename = None
-    file = request.files.get("image")
-    if file and file.filename:
+    files = [file for file in request.files.getlist("images") if file and file.filename]
+    files += [file for file in request.files.getlist("image") if file and file.filename]
+    if not files:
+        return jsonify({"error": "Kamida 1 ta rasm yuklash majburiy"}), 400
+    if len(files) > MAX_AD_IMAGES:
+        return jsonify({"error": "Ko'pi bilan 4 ta rasm yuklash mumkin"}), 400
+
+    image_filenames = []
+    for file in files:
         if not allowed_file(file.filename):
-            return jsonify({"error": "Faqat rasm fayllari ruxsat etilgan (png, jpg, jpeg, webp, gif)"}), 400
+           return jsonify({"error": "Faqat rasm fayllari ruxsat etilgan (png, jpg, jpeg, webp, gif)"}), 400
         file.seek(0, os.SEEK_END)
         size = file.tell()
         file.seek(0)
         if size > MAX_IMAGE_BYTES:
-            return jsonify({"error": "Rasm hajmi 4MB dan oshmasligi kerak"}), 400
-        # Save with a fresh, always-safe extension (.jpg or .png) chosen after
-        # Pillow re-encodes the file — this neutralises polyglot files (e.g. a
-        # script hidden inside a ".jpg") since only real pixel data survives.
+           return jsonify({"error": "Har bir rasm hajmi 4MB dan oshmasligi kerak"}), 400
         image_filename = f"{uuid.uuid4().hex}.jpg"
         dest_path = os.path.join(UPLOAD_DIR, image_filename)
         ok, err = verify_and_resave_image(file, dest_path)
         if not ok:
-            return jsonify({"error": err}), 400
+           for saved in image_filenames:
+               try:
+                   os.remove(os.path.join(UPLOAD_DIR, saved))
+               except OSError:
+                   pass
+           return jsonify({"error": err}), 400
+        image_filenames.append(image_filename)
 
     db = get_db()
     db.execute(
         """INSERT INTO ads (user_id, title, price, description, phone, image_filename, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (session["user_id"], title, price, description, phone or None, image_filename,
+          VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (session["user_id"], title, price, description, phone, image_filenames[0],
          datetime.utcnow().isoformat()),
+    )
+    ad_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+    db.executemany(
+        "INSERT INTO ad_images (ad_id, filename) VALUES (?, ?)",
+        [(ad_id, filename) for filename in image_filenames],
     )
     db.commit()
     return jsonify({"ok": True})
@@ -521,13 +661,12 @@ def api_delete_ad(ad_id):
         return jsonify({"error": "Topilmadi"}), 404
     if ad["user_id"] != session["user_id"]:
         return jsonify({"error": "Ruxsat yo'q"}), 403
+    image_filenames = ad_image_names(ad_id, ad["image_filename"])
     db.execute("DELETE FROM ads WHERE id = ?", (ad_id,))
     db.commit()
-    if ad["image_filename"]:
-        try:
-            os.remove(os.path.join(UPLOAD_DIR, ad["image_filename"]))
-        except OSError:
-            pass
+    for filename in image_filenames:
+        with suppress(OSError):
+            os.remove(os.path.join(UPLOAD_DIR, filename))
     return jsonify({"ok": True})
 
 
@@ -620,10 +759,18 @@ def api_send_message(ad_id):
         receiver_id = data.get("to")
         if not receiver_id:
             return jsonify({"error": "Suhbatdoshni tanlang"}), 400
-        receiver_id = int(receiver_id)
-        buyer_exists = db.execute("SELECT id FROM users WHERE id = ?", (receiver_id,)).fetchone()
+        try:
+            receiver_id = int(receiver_id)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Suhbatdosh noto'g'ri"}), 400
+        buyer_exists = db.execute(
+            """SELECT 1 FROM users u JOIN messages m ON u.id = m.sender_id
+               WHERE u.id = ? AND m.ad_id = ? AND m.sender_id != ?
+                 AND m.receiver_id = ? LIMIT 1""",
+            (receiver_id, ad_id, owner_id, owner_id),
+        ).fetchone()
         if not buyer_exists:
-            return jsonify({"error": "Foydalanuvchi topilmadi"}), 404
+            return jsonify({"error": "Bu e'lon bo'yicha suhbat topilmadi"}), 404
 
     db.execute(
         "INSERT INTO messages (ad_id, sender_id, receiver_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -653,7 +800,132 @@ def api_start_call(ad_id):
         (ad_id, caller_id, callee_id, datetime.utcnow().isoformat()),
     )
     db.commit()
-    return jsonify({"ok": True, "phone": ad["phone"]})
+    call_id = uuid.uuid4().hex
+    db.execute(
+        """INSERT INTO webrtc_calls
+           (call_id, ad_id, caller_id, callee_id, created_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        (call_id, ad_id, caller_id, callee_id, datetime.utcnow().isoformat()),
+    )
+    db.commit()
+    return jsonify({"ok": True, "phone": ad["phone"], "call_id": call_id})
+
+
+def get_webrtc_call(call_id):
+    call = get_db().execute(
+        "SELECT * FROM webrtc_calls WHERE call_id = ?", (call_id,)
+    ).fetchone()
+    if not call:
+        return None, (jsonify({"error": "Qo'ng'iroq topilmadi"}), 404)
+    if session["user_id"] not in (call["caller_id"], call["callee_id"]):
+        return None, (jsonify({"error": "Ruxsat yo'q"}), 403)
+    return call, None
+
+
+@app.route("/api/webrtc/incoming", methods=["GET"])
+@login_required
+def api_webrtc_incoming():
+    rows = get_db().execute(
+        """SELECT w.call_id, w.ad_id, w.caller_id, u.username AS caller_name,
+                  a.title
+           FROM webrtc_calls w
+           JOIN users u ON u.id = w.caller_id
+           JOIN ads a ON a.id = w.ad_id
+           WHERE w.callee_id = ? AND w.status = 'ringing'
+           ORDER BY w.created_at DESC LIMIT 10""",
+        (session["user_id"],),
+    ).fetchall()
+    return jsonify({"calls": [dict(row) for row in rows]})
+
+
+@app.route("/api/webrtc/<call_id>", methods=["GET"])
+@login_required
+def api_webrtc_state(call_id):
+    call, error = get_webrtc_call(call_id)
+    if error:
+        return error
+    db = get_db()
+    candidates = db.execute(
+        "SELECT id, sender_id, candidate FROM webrtc_candidates WHERE call_id = ? ORDER BY id",
+        (call_id,),
+    ).fetchall()
+    return jsonify({
+        "call_id": call["call_id"],
+        "offer": json.loads(call["offer"]) if call["offer"] else None,
+        "answer": json.loads(call["answer"]) if call["answer"] else None,
+        "status": call["status"],
+        "candidates": [
+            {"id": row["id"], "sender_id": row["sender_id"], "candidate": json.loads(row["candidate"])}
+            for row in candidates
+        ],
+    })
+
+
+@app.route("/api/webrtc/<call_id>/offer", methods=["POST"])
+@login_required
+def api_webrtc_offer(call_id):
+    call, error = get_webrtc_call(call_id)
+    if error:
+        return error
+    if call["caller_id"] != session["user_id"]:
+        return jsonify({"error": "Faqat qo'ng'iroq qiluvchi offer yuborishi mumkin"}), 403
+    offer = (request.get_json(silent=True) or {}).get("offer")
+    if not isinstance(offer, dict):
+        return jsonify({"error": "WebRTC offer noto'g'ri"}), 400
+    db = get_db()
+    db.execute("UPDATE webrtc_calls SET offer = ? WHERE call_id = ?", (json.dumps(offer), call_id))
+    db.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/webrtc/<call_id>/answer", methods=["POST"])
+@login_required
+def api_webrtc_answer(call_id):
+    call, error = get_webrtc_call(call_id)
+    if error:
+        return error
+    if call["callee_id"] != session["user_id"]:
+        return jsonify({"error": "Faqat qabul qiluvchi answer yuborishi mumkin"}), 403
+    answer = (request.get_json(silent=True) or {}).get("answer")
+    if not isinstance(answer, dict):
+        return jsonify({"error": "WebRTC answer noto'g'ri"}), 400
+    db = get_db()
+    db.execute(
+        "UPDATE webrtc_calls SET answer = ?, status = 'connected' WHERE call_id = ?",
+        (json.dumps(answer), call_id),
+    )
+    db.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/webrtc/<call_id>/candidate", methods=["POST"])
+@login_required
+def api_webrtc_candidate(call_id):
+    call, error = get_webrtc_call(call_id)
+    if error:
+        return error
+    candidate = (request.get_json(silent=True) or {}).get("candidate")
+    if not isinstance(candidate, dict):
+        return jsonify({"error": "ICE candidate noto'g'ri"}), 400
+    db = get_db()
+    db.execute(
+        "INSERT INTO webrtc_candidates (call_id, sender_id, candidate) VALUES (?, ?, ?)",
+        (call_id, session["user_id"], json.dumps(candidate)),
+    )
+    db.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/webrtc/<call_id>/end", methods=["POST"])
+@login_required
+def api_webrtc_end(call_id):
+    call, error = get_webrtc_call(call_id)
+    if error:
+        return error
+    db = get_db()
+    db.execute("UPDATE webrtc_calls SET status = 'ended' WHERE call_id = ?", (call_id,))
+    db.commit()
+    return jsonify({"ok": True})
 
 
 # ---------- security headers ----------
@@ -668,7 +940,12 @@ def set_security_headers(resp):
         "font-src 'self' https://fonts.gstatic.com; "
         "script-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
     )
-    resp.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    resp.headers["Permissions-Policy"] = "geolocation=(), microphone=(self), camera=(self)"
+    resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    resp.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    resp.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+    if request.path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-store"
     # Only sent when the app is configured for HTTPS (SECURE_COOKIES=1), since HSTS on a
     # plain-HTTP dev server would just be misleading and can't be un-sent once cached.
     if app.config["SESSION_COOKIE_SECURE"]:
