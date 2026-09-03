@@ -50,12 +50,12 @@ o'zi qo'shadi).
   soniya bloklash)
 - **Yangi**: ro'yxatdan o'tish, e'lon joylashtirish, xabar yuborish va
   qo'ng'iroq qilish uchun ham alohida rate-limit (spam/bot hujumlaridan himoya)
-- Sessiya cookie `HttpOnly`, `SameSite=Lax`; `SECURE_COOKIES=1` muhit
-  o'zgaruvchisi HTTPS'da ishlatilganda cookie'ni faqat HTTPS orqali yuborishga
-  majburlaydi
+- Sessiya cookie `HttpOnly`, `SameSite=Strict` va production'da `Secure`;
+  `SECURE_COOKIES=1` cookie'ni faqat HTTPS orqali yuborishga majburlaydi
 - Xavfsizlik headerlari: `X-Content-Type-Options`, `X-Frame-Options`,
   `Referrer-Policy`, `Content-Security-Policy`, `Permissions-Policy`
-- HTML chiqishda `escapeHtml()` orqali XSS'dan himoya
+- HTML chiqishda `escapeHtml()` va dinamik event handlerlarda context-safe
+  `data-*` qiymatlar orqali XSS'dan himoya
 - So'rov hajmi cheklangan (6MB)
 
 ### Chat — endi to'g'ri ishlaydi
@@ -92,8 +92,9 @@ tarafida ularning xabarlari **bitta suhbatga aralashib ketardi**. Endi:
   bilan ishlaydigan lokal/dev muhit uchun xavfsiz, ko'p worker'li production
   uchun EMAS (har bir worker o'z hisoblagichiga ega bo'lib, hujumchining
   amaldagi urinish limiti worker sonига ko'payadi).
-- **HSTS header** — `SECURE_COOKIES=1` bo'lsa (ya'ni sayt HTTPS orqali
-  xizmat qilinsa), `Strict-Transport-Security` headeri ham qo'shiladi.
+- **HSTS header** — HTTPS so'rovlarida `Strict-Transport-Security` headeri
+  qo'shiladi; Render kabi reverse proxy uchun `X-Forwarded-Proto` ishonchli
+  tarzda hisobga olinadi.
 - **`/api/ads`** endi `limit` va `offset` query parametrlarini qabul qiladi
   (standart `limit=30`, maksimal `100`) — natijalar jimgina kesilib
   qolmaydi, sahifalab olish mumkin.

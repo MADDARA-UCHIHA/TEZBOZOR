@@ -5,11 +5,13 @@ import time
 import uuid
 import json
 import hmac
+import hashlib
 import logging
 from contextlib import suppress
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, g, request, session, jsonify, render_template, redirect, url_for, send_from_directory
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -45,6 +47,7 @@ MAX_IMAGE_BYTES = 4 * 1024 * 1024  # 4MB per image
 MAX_IMAGE_DIMENSION = 4000  # px, guards against decompression-bomb style images
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
 
 # ---------- SECRET_KEY: fail fast in production instead of silently rotating ----------
 # A silently-generated random key invalidates every session on each restart/worker
@@ -73,8 +76,13 @@ app.config["SESSION_COOKIE_NAME"] = "tezbozor_session"
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "").strip()
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 ADMIN_SESSION_SECONDS = 30 * 60
+
+
+def admin_client_fingerprint():
+    user_agent = request.headers.get("User-Agent", "")
+    return hashlib.sha256(user_agent.encode("utf-8")).hexdigest()
 # Set SECURE_COOKIES=1 in the environment once the site is served over HTTPS in production
-app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SECURE_COOKIES") == "1"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SECURE_COOKIES", "1") == "1"
 app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024  # 6MB max request body (form + image)
 
 csrf = CSRFProtect(app)
@@ -415,11 +423,15 @@ def admin_required(fn):
         session_is_fresh = isinstance(authenticated_at, (int, float)) and (
             time.time() - authenticated_at < ADMIN_SESSION_SECONDS
         )
+        expected_fingerprint = admin_client_fingerprint()
+        session_fingerprint = session.get("admin_client_fingerprint", "")
         if (
             not session.get("admin_authenticated")
             or not ADMIN_USERNAME
             or session.get("admin_username") != ADMIN_USERNAME
             or not session_is_fresh
+            or not isinstance(session_fingerprint, str)
+            or not hmac.compare_digest(session_fingerprint, expected_fingerprint)
         ):
             session.pop("admin_authenticated", None)
             session.pop("admin_username", None)
@@ -466,6 +478,7 @@ def api_admin_login():
     session["admin_authenticated"] = True
     session["admin_username"] = ADMIN_USERNAME
     session["admin_authenticated_at"] = time.time()
+    session["admin_client_fingerprint"] = admin_client_fingerprint()
     logger.info("Admin session started for %s from %s", ADMIN_USERNAME, client_ip())
     return jsonify({"ok": True})
 
@@ -599,6 +612,7 @@ def api_login():
         session["admin_authenticated"] = True
         session["admin_username"] = ADMIN_USERNAME
         session["admin_authenticated_at"] = time.time()
+        session["admin_client_fingerprint"] = admin_client_fingerprint()
         return jsonify({"ok": True, "username": ADMIN_USERNAME, "is_admin": True})
 
     db = get_db()
@@ -1090,11 +1104,11 @@ def set_security_headers(resp):
     resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
     resp.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     resp.headers["X-Permitted-Cross-Domain-Policies"] = "none"
-    if request.path.startswith("/api/"):
+    if request.path.startswith("/api/") or request.path == "/admin":
         resp.headers["Cache-Control"] = "no-store"
     # Only sent when the app is configured for HTTPS (SECURE_COOKIES=1), since HSTS on a
     # plain-HTTP dev server would just be misleading and can't be un-sent once cached.
-    if app.config["SESSION_COOKIE_SECURE"]:
+    if app.config["SESSION_COOKIE_SECURE"] and request.is_secure:
         resp.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
     return resp
 

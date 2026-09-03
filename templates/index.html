@@ -500,6 +500,7 @@ let currentUser = null;
 let currentUserId = null;
 let currentUserAvatar = null;
 let adsCache = [];
+let channelAdsCache = [];
 let activeAdId = null;
 let selectedImageFiles = [];
 
@@ -787,9 +788,9 @@ async function loadAds() {
         <div class="ad-title">${escapeHtml(a.title)}</div>
         <div class="ad-meta">${escapeHtml(a.description || '')}</div>
         ${a.phone ? `<div class="ad-meta">📞 ${escapeHtml(a.phone)}</div>` : ''}
-        <div class="ad-meta">E'lon beruvchi: <span class="seller-link" onclick="openChannel('${escapeJs(a.author)}')">${escapeHtml(a.author)}</span></div>
+        <div class="ad-meta">E'lon beruvchi: <span class="seller-link" data-username="${escapeHtml(a.author)}" onclick="openChannel(this.dataset.username)">${escapeHtml(a.author)}</span></div>
         <div class="ad-actions">
-          <button class="chat-btn" onclick="event.stopPropagation(); openChat(${a.id}, '${escapeJs(a.title)}', ${a.author_id})">💬 Chat</button>
+          <button class="chat-btn" onclick="event.stopPropagation(); openChatById(${a.id})">💬 Chat</button>
           ${a.author === currentUser ? `<button class="del-btn" onclick="event.stopPropagation(); deleteAd(${a.id})">🗑 O'chirish</button>` : ''}
         </div>
       </div>
@@ -818,9 +819,9 @@ async function openAdDetails(id) {
   document.getElementById('related-grid').innerHTML = related.ads.map(item => `<div class="related-card"><div>${escapeHtml(item.title)}</div><strong>${escapeHtml(item.price)} so'm</strong></div>`).join('') || '<div class="ad-meta">O\'xshash mahsulot topilmadi</div>';
 }
 function closeAdDetails() { document.getElementById('ad-detail-modal').style.display = 'none'; }
-function escapeJs(s) {
-  return (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")
-    .replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/\u2028|\u2029/g, '');
+function openChatById(adId) {
+  const ad = adsCache.concat(channelAdsCache).find(item => item.id === adId);
+  if (ad) openChat(ad.id, ad.title, ad.author_id);
 }
 
 let chatPollTimer = null;
@@ -909,6 +910,7 @@ async function sendMessage() {
 async function openChannel(username) {
   try {
     const d = await apiJson('/api/channel/' + encodeURIComponent(username));
+    channelAdsCache = d.ads;
     document.getElementById('channel-avatar').textContent = d.seller.username.charAt(0).toUpperCase();
     document.getElementById('channel-name').textContent = d.seller.username;
     document.getElementById('channel-sub').textContent = `${d.ads_count} ta e'lon`;
@@ -925,7 +927,7 @@ async function openChannel(username) {
             <div class="ad-meta">${escapeHtml(a.description || '')}</div>
             ${a.phone ? `<div class="ad-meta">📞 ${escapeHtml(a.phone)}</div>` : ''}
             <div class="ad-actions">
-              <button class="chat-btn" onclick="openChat(${a.id}, '${escapeJs(a.title)}', ${d.seller.id})">💬 Chat</button>
+              <button class="chat-btn" onclick="openChatById(${a.id})">💬 Chat</button>
             </div>
           </div>
         </div>
