@@ -170,7 +170,7 @@
   .bottom-nav {
     position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
     width: min(560px, calc(100% - 24px)); padding: 8px 10px;
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
     background: rgba(255,253,248,0.94); border: 1px solid rgba(226,214,186,0.9);
     border-radius: 22px; box-shadow: 0 12px 35px rgba(23,50,74,0.2);
     backdrop-filter: blur(14px); z-index: 100;
@@ -190,6 +190,8 @@
   .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
   .settings-row input { accent-color: var(--teal); width: 18px; height: 18px; }
   .account-action { width: 100%; margin-top: 18px; padding: 12px; border: 0; border-radius: 10px; background: var(--brick); color: #fff; font-weight: 700; }
+  .account-section-title { margin: 0 0 10px; color: var(--lapis); font-size: 13px; text-transform: uppercase; letter-spacing: .5px; }
+  .account-avatar-btn { display: block; width: 100%; margin: 12px 0; padding: 11px 14px; border: 0; border-radius: 10px; background: var(--teal); color: #fff; font-weight: 700; cursor: pointer; }
   .detail-body { padding: 18px; overflow-y: auto; background: var(--plaster); }
   .detail-images { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 14px; }
   .detail-images img { width: 220px; height: 170px; flex: 0 0 auto; object-fit: cover; border-radius: 12px; }
@@ -361,26 +363,28 @@
   <div class="modal-box terms-box">
     <div class="modal-header"><span>Foydalanish shartlari</span><button onclick="closeTerms()">&times;</button></div>
     <div class="terms-body">
-      <h3>1. Xizmat haqida</h3>
-      <p>TEZBOZOR foydalanuvchilarga mahsulot va xizmatlar haqida e'lon joylashtirish, qidirish va chat orqali muloqot qilish imkonini beruvchi onlayn platformadir. TEZBOZOR xaridor va sotuvchi o'rtasidagi bitimning tarafi emas.</p>
-      <h3>2. Akkount</h3>
-      <p>Ro'yxatdan o'tishda to'g'ri ma'lumot kiriting. Parolingizni sir saqlash va akkountingiz orqali amalga oshirilgan harakatlar uchun javob berish sizning zimmangizda. Boshqa shaxs nomidan akkount ochish taqiqlanadi.</p>
-      <h3>3. E'lonlar</h3>
-      <p>E'lonlar qonuniy, aniq va chalg'itmaydigan bo'lishi kerak. Soxta mahsulot, noqonuniy buyum, firibgarlik, spam, haqorat, nafrat, tahdid va mualliflik huquqini buzuvchi kontent taqiqlanadi. Foydalanuvchi joylashtirgan rasm, matn va ma'lumotlar uchun o'zi javobgar.</p>
-      <h3>4. Savdo xavfsizligi</h3>
-      <p>Uchrashuv, to'lov va yetkazib berishda ehtiyot bo'ling. Oldindan pul yuborishdan oldin ma'lumotlarni tekshiring. TEZBOZOR bitim natijasi, mahsulot sifati, yetkazib berish yoki foydalanuvchilarning va'dalari uchun kafolat bermaydi.</p>
-      <h3>5. Chat va aloqa</h3>
-      <p>Chatdan faqat qonuniy va hurmatli muloqot uchun foydalaning. Shaxsiy ma'lumotlar, karta paroli, SMS-kod va boshqa maxfiy ma'lumotlarni yubormang. Spam yoki ta'qib aniqlansa, akkaunt cheklanishi mumkin.</p>
-      <h3>6. Shaxsiy ma'lumotlar</h3>
-      <p>Platforma akkaunt nomi, sessiya ma'lumotlari, e'lonlar, yuklangan rasmlar va chat xabarlarini xizmatni ishlatish uchun saqlashi mumkin. Ma'lumotlar xavfsizlik, texnik xizmat va qonuniy talablar doirasida qayta ishlanadi. Parollar ochiq ko'rinishda saqlanmaydi.</p>
-      <h3>7. Kontentni boshqarish</h3>
-      <p>TEZBOZOR qoidabuzar e'lonlarni o'chirish, akkauntni vaqtincha yoki doimiy cheklash va zarur hollarda ma'lumotlarni vakolatli organlarga taqdim etish huquqiga ega.</p>
-      <h3>8. Javobgarlik</h3>
-      <p>Platformadan foydalanish sizning xavfingiz ostida amalga oshiriladi. Xizmat uzilishi yoki foydalanuvchilar harakatidan kelib chiqadigan zararlar uchun TEZBOZOR qonunda ruxsat etilgan doirada javobgar bo'lmaydi.</p>
-      <h3>9. Shartlarning o'zgarishi</h3>
-      <p>Shartlar xizmat rivojlanishi yoki qonunchilik o'zgarishi sababli yangilanishi mumkin. Yangilangan shartlar ushbu oynada e'lon qilinadi. O'zgarishlardan keyin xizmatdan foydalanishni davom ettirish ularni qabul qilganingizni anglatadi.</p>
-      <h3>10. Aloqa</h3>
-      <p>Qoidabuzarlik yoki maxfiylik bo'yicha savollar bo'lsa, platforma egasiga murojaat qiling. Ushbu matn umumiy axborot uchun bo'lib, mahalliy yurist maslahati o'rnini bosmaydi.</p>
+      <h3>1. Xizmat va rozilik</h3>
+      <p>TEZBOZOR xaridor va sotuvchilarni bog'laydigan e'lonlar platformasidir. Ro'yxatdan o'tish, e'lon joylashtirish yoki xizmatdan foydalanish orqali ushbu shartlar va Maxfiylik siyosatini o'qiganingizni, tushunganingizni va qabul qilganingizni tasdiqlaysiz. TEZBOZOR bitimning sotuvchisi, xaridori, to'lov operatori yoki yetkazib beruvchisi emas.</p>
+      <h3>2. Yosh va akkaunt</h3>
+      <p>Akkaunt ochish uchun kamida 18 yoshda bo'lish yoki ota-ona/homiy roziligiga ega bo'lish kerak. Ma'lumotlar aniq va yangilangan bo'lishi shart. Bir shaxsga tegishli bo'lmagan akkauntdan foydalanish, akkauntni sotish yoki boshqa shaxs nomidan ro'yxatdan o'tish taqiqlanadi. Login, parol va akkauntdagi harakatlar uchun foydalanuvchi javobgar.</p>
+      <h3>3. Taqiqlangan mahsulot va harakatlar</h3>
+      <p>Noqonuniy, o'g'irlangan, qalbaki, xavfli yoki ruxsatsiz mahsulotlar, qurol-yarog', giyohvand moddalar, firibgarlik sxemalari, piramida loyihalari, spam, tahdid, nafrat, ta'qib, pornografik materiallar va mualliflik huquqini buzuvchi kontent taqiqlanadi. Soxta narx, soxta rasm, boshqa sotuvchining kontentini ko'chirish yoki bir mahsulotni ataylab bir necha marta joylashtirish ham qoidabuzarlik hisoblanadi.</p>
+      <h3>4. E'lon va kontent</h3>
+      <p>E'lon nomi, narxi, tavsifi, telefon raqami va rasmi haqiqatga mos bo'lishi kerak. Foydalanuvchi yuklagan rasm, matn, avatar va boshqa materiallarga bo'lgan huquq o'zida borligini kafolatlaydi hamda TEZBOZORga ularni xizmatni ko'rsatish, xavfsizlikni tekshirish va e'lonni namoyish qilish uchun cheklangan, bepul foydalanish huquqini beradi.</p>
+      <h3>5. Bitim, to'lov va yetkazib berish</h3>
+      <p>Bitim shartlari, mahsulot sifati, egalik huquqi, narx, to'lov, qaytarish va yetkazib berishni xaridor hamda sotuvchi mustaqil kelishadi. TEZBOZOR pulni saqlamaydi va bitimni kafolatlamaydi. Oldindan to'lov qilishdan oldin sotuvchini tekshiring, uchrashuvni xavfsiz joyda o'tkazing va karta paroli yoki SMS-kodni hech kimga bermang.</p>
+      <h3>6. Chat va aloqa</h3>
+      <p>Chatdan faqat qonuniy savdo va hurmatli muloqot uchun foydalaning. Karta ma'lumotlari, parol, SMS-kod, pasport nusxasi va boshqa maxfiy ma'lumotlarni yubormang. Spam, aldov, ta'qib yoki noqonuniy takliflar yuborish taqiqlanadi va xabarlar xavfsizlik tekshiruvi uchun saqlanishi mumkin.</p>
+      <h3>7. Shaxsiy ma'lumotlar</h3>
+      <p>TEZBOZOR akkaunt ma'lumotlari, e'lonlar, rasmlar, chatlar va texnik loglarni xizmatni ishlatish, xavfsizlik, firibgarlikni aniqlash va qonuniy talablarni bajarish uchun qayta ishlaydi. Ma'lumotlar zarur muddat saqlanadi va qonuniy asos bo'lmasa uchinchi shaxslarga sotilmaydi. Parollar ochiq ko'rinishda saqlanmaydi.</p>
+      <h3>8. Moderatsiya va akkauntni cheklash</h3>
+      <p>TEZBOZOR e'lon yoki akkauntni tekshirish, yashirish, o'chirish, tahrirlashni talab qilish, vaqtincha yoki doimiy bloklash huquqiga ega. Qoidabuzarlik, shubhali faoliyat yoki qonuniy so'rov bo'lsa, tegishli ma'lumotlar vakolatli organlarga taqdim etilishi mumkin. Zarur hollarda sabab va murojaat qilish tartibi foydalanuvchiga bildiriladi.</p>
+      <h3>9. Javobgarlik va xavfsizlik</h3>
+      <p>Xizmatdan foydalanish foydalanuvchining o'z xavfi ostida. TEZBOZOR foydalanuvchi joylashtirgan ma'lumotning to'g'riligi, mahsulot sifati, sotuvchining halolligi, yetkazib berish, xizmat uzilishi yoki uchinchi shaxs harakatlari uchun qonunda majburiy belgilangan holatlardan tashqari javobgar emas. Zarar yoki qoidabuzarlikni sezsangiz, darhol platformaga xabar bering.</p>
+      <h3>10. Shartlarning o'zgarishi va qonun</h3>
+      <p>Shartlar xizmat, xavfsizlik yoki qonunchilikdagi o'zgarishlar sabab yangilanishi mumkin. Yangi tahrir shu oynada e'lon qilinadi; kuchga kirganidan keyin xizmatdan foydalanishni davom ettirish yangi shartlarga rozilikni anglatadi. Ushbu shartlar O'zbekiston Respublikasining amaldagi qonunchiligi doirasida qo'llanadi.</p>
+      <h3>11. Aloqa va huquqiy eslatma</h3>
+      <p>Qoidabuzarlik yoki maxfiylik bo'yicha savollar uchun platforma egasiga murojaat qiling. Ushbu matn umumiy foydalanish shartlari bo'lib, yuridik maslahat o'rnini bosmaydi. Biznesingiz uchun yakuniy tahrirni mahalliy yurist bilan tekshirish tavsiya etiladi.</p>
     </div>
   </div>
 </div>
@@ -436,7 +440,6 @@
 <nav class="bottom-nav" id="bottom-nav" aria-label="Asosiy navigatsiya">
   <button class="nav-item active" onclick="goHome()"><span class="nav-icon">⌂</span><span>Bosh sahifa</span></button>
   <button class="nav-item nav-add" onclick="openNewAd()"><span class="nav-icon">+</span><span>E'lon</span></button>
-  <button class="nav-item" onclick="openAccount()"><span class="nav-icon">◉</span><span>Account</span></button>
   <button class="nav-item" onclick="openSettings()"><span class="nav-icon">⚙</span><span>Sozlamalar</span></button>
 </nav>
 
@@ -456,26 +459,19 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="account-modal">
-  <div class="modal-box">
-    <div class="modal-header"><span>Account</span><button onclick="closeAccount()">&times;</button></div>
-    <div class="account-modal-card">
-      <div class="account-avatar" id="account-avatar"></div>
-      <div class="account-name" id="account-name"></div>
-      <label class="img-picker-btn" for="avatar-file">Account rasmini o'zgartirish</label>
-      <input type="file" id="avatar-file" accept="image/*" style="display:none" onchange="changeAvatar()">
-      <button class="account-action" onclick="logout()">Chiqish</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="settings-modal">
   <div class="modal-box">
     <div class="modal-header"><span>Account sozlamalari</span><button onclick="closeSettings()">&times;</button></div>
     <div class="account-modal-card">
+      <div class="account-section-title">Account</div>
+      <div class="account-avatar" id="account-avatar"></div>
+      <div class="account-name" id="account-name"></div>
+      <button type="button" class="account-avatar-btn" onclick="document.getElementById('avatar-file').click()">Account rasmini o'zgartirish</button>
+      <input type="file" id="avatar-file" accept="image/*" style="display:none" onchange="changeAvatar()">
       <div class="settings-row"><span>Bildirishnomalar</span><input type="checkbox" id="notifications-setting" checked></div>
       <div class="settings-row"><span>Avtomatik yangilash</span><input type="checkbox" id="refresh-setting" checked></div>
       <div class="settings-row"><span>Profil</span><strong id="settings-username"></strong></div>
+      <button class="account-action" onclick="logout()">Chiqish</button>
     </div>
   </div>
 </div>
@@ -603,7 +599,6 @@ async function logout() {
   currentUser = null;
   currentUserId = null;
   currentUserAvatar = null;
-  closeAccount();
   closeSettings();
   closeNewAd();
   await refreshCsrf();
@@ -673,7 +668,7 @@ function openAccount() {
   avatar.style.backgroundImage = currentUserAvatar ? `url('/uploads/${encodeURIComponent(currentUserAvatar)}')` : '';
   avatar.style.backgroundSize = 'cover';
   document.getElementById('account-name').textContent = currentUser || 'Account';
-  document.getElementById('account-modal').style.display = 'flex';
+  openSettings();
 }
 async function changeAvatar() {
   const file = document.getElementById('avatar-file').files[0];
@@ -686,13 +681,16 @@ async function changeAvatar() {
     openAccount();
   } catch (e) { alert(e.message); }
 }
-function closeAccount() { document.getElementById('account-modal').style.display = 'none'; }
 function openSettings() {
+  const avatar = document.getElementById('account-avatar');
+  avatar.textContent = (currentUser || '?').charAt(0).toUpperCase();
+  avatar.style.backgroundImage = currentUserAvatar ? `url('/uploads/${encodeURIComponent(currentUserAvatar)}')` : '';
+  avatar.style.backgroundSize = 'cover';
+  document.getElementById('account-name').textContent = currentUser || 'Account';
   document.getElementById('settings-username').textContent = currentUser || '';
   document.getElementById('settings-modal').style.display = 'flex';
 }
 function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
-
 function previewImage() {
   const input = document.getElementById('ad-image');
   const previewBox = document.getElementById('img-previews');
@@ -950,6 +948,7 @@ function closeChannel() {
   if (d.user) {
     currentUser = d.user.username;
     currentUserId = d.user.id;
+    currentUserAvatar = d.user.avatar_filename;
     document.getElementById('door-screen').style.display = 'none';
     enterBoard();
   }

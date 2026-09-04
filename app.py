@@ -81,8 +81,9 @@ ADMIN_SESSION_SECONDS = 30 * 60
 def admin_client_fingerprint():
     user_agent = request.headers.get("User-Agent", "")
     return hashlib.sha256(user_agent.encode("utf-8")).hexdigest()
-# Set SECURE_COOKIES=1 in the environment once the site is served over HTTPS in production
-app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SECURE_COOKIES", "1") == "1"
+# Set SECURE_COOKIES=1 in the environment once the site is served over HTTPS in production.
+# Keep it disabled by default so the documented local HTTP server can persist sessions.
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SECURE_COOKIES", "0") == "1"
 app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024  # 6MB max request body (form + image)
 
 csrf = CSRFProtect(app)
@@ -656,9 +657,11 @@ def api_profile_avatar():
     if file.tell() > MAX_IMAGE_BYTES:
         return jsonify({"error": "Rasm hajmi 4MB dan oshmasligi kerak"}), 400
     file.seek(0)
-    filename = f"avatar-{uuid.uuid4().hex}.{file.filename.rsplit('.', 1)[1].lower()}"
+    filename = f"avatar-{uuid.uuid4().hex}.jpg"
     path = os.path.join(UPLOAD_DIR, filename)
-    file.save(path)
+    ok, err = verify_and_resave_image(file, path)
+    if not ok:
+        return jsonify({"error": err}), 400
     db = get_db()
     old = current_avatar_filename(session["user_id"])
     db.execute(
